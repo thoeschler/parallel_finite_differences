@@ -1,6 +1,7 @@
 #pragma once
 #include "la.hpp"
 #include "crs.hpp"
+#include "grid.hpp"
 
 #include <vector>
 #include <functional>
@@ -14,7 +15,6 @@
 
 // };
 
-void assemble_rhs(std::vector<double> &b, const std::size_t Nx, const std::size_t Ny,
-                  std::function<double(double, double)> bc);
+void assemble_rhs(std::vector<double> &b, UnitSquareGrid const& grid, std::function<double(double, double)> bc);
 
-void assemble_matrix(CRSMatrix &A, const std::size_t Nx, const std::size_t Ny);
+void assemble_matrix(CRSMatrix &A, UnitSquareGrid const& grid);

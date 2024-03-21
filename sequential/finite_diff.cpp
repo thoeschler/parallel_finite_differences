@@ -1,4 +1,5 @@
 #include "finite_diff.hpp"
+#include "grid.hpp"
 
 #include <iostream>
 
@@ -7,14 +8,13 @@ bool on_boundary(double x, double y) {
     return (std::abs(x) - 1) < tol || (std::abs(y) - 1.0) < tol;
 }
 
-void assemble_rhs(std::vector<double> &b, const std::size_t Nx, const std::size_t Ny,
-                  std::function<double(double, double)> bc) {
+void assemble_rhs(std::vector<double> &b, UnitSquareGrid const& grid, std::function<double(double, double)> bc) {
     std::fill(b.begin(), b.end(), 0.0);
-    std::size_t Nxt = Nx - 2;
-    std::size_t Nyt = Ny - 2;
+    std::size_t Nxt = grid.Nx - 2;
+    std::size_t Nyt = grid.Ny - 2;
 
-    const double hx = 1.0 / (Nx - 1);
-    const double hy = 1.0 / (Ny - 1);
+    const double hx = 1.0 / (grid.Nx - 1);
+    const double hy = 1.0 / (grid.Ny - 1);
     const double hx2 = hx * hx;
     const double hy2 = hy * hy;
     double x_bndry, y_bndry;
@@ -48,11 +48,11 @@ void assemble_rhs(std::vector<double> &b, const std::size_t Nx, const std::size_
     }
 }
 
-void assemble_matrix(CRSMatrix &A, const std::size_t Nx, const std::size_t Ny) {
-    const double hx = 1.0 / (Nx - 1);
-    const double hy = 1.0 / (Ny - 1);
-    std::size_t Nxt = Nx - 2;
-    std::size_t Nyt = Ny - 2;
+void assemble_matrix(CRSMatrix &A, UnitSquareGrid const& grid) {
+    const double hx = 1.0 / (grid.Nx - 1);
+    const double hy = 1.0 / (grid.Ny - 1);
+    std::size_t Nxt = grid.Nx - 2;
+    std::size_t Nyt = grid.Ny - 2;
     const double hx2 = hx * hx;
     const double hy2 = hy * hy;
 
