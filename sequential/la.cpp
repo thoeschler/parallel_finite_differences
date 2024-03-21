@@ -76,8 +76,7 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
     p = r;
     norm_r_old_squared = dot(r, r);
 
-    std::size_t counter = 0;
-    while (!converged && counter < 100) {
+    while (!converged) {
         matmul(A, p, Ap);
         alpha = dot(r, r) / dot(Ap, p);
         add_mult_finout(u, p, alpha);
@@ -88,7 +87,5 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
         add_mult_sinout(r, p, gamma);
 
         converged = (norm_r_squared <= tol * tol * norm_b_squared);
-        std::cout << norm_r_squared << "\n";
-        ++counter;
     }
 }
