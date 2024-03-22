@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-Wall -Wextra
+CXXFLAGS=-Wall -Wextra -O3 -march=native
 
 build: main.o la.o crs.o finite_diff.o
 	$(CXX) $(CXXFLAGS) finite_diff.o la.o crs.o main.o -o main.out
