@@ -1,0 +1,89 @@
+#include "finite_diff.hpp"
+#include "grid.hpp"
+
+#include <iostream>
+
+bool on_boundary(double x, double y) {
+    constexpr double tol = 1e-7;
+    return (std::abs(x) - 1) < tol || (std::abs(y) - 1.0) < tol;
+}
+
+void initialize_rhs(std::vector<double> &b, UnitSquareGrid const& global_grid, std::vector<int> const& coords,
+                    std::vector<int> const& dims) {
+    std::size_t Nxt = global_grid.Nx - 2, Nyt = global_grid.Ny - 2;
+    std::size_t block_size_x = Nxt / dims[1]; 
+    std::size_t block_size_y = Nyt / dims[0];
+
+    std::size_t rest_x = Nxt % dims[1];
+    std::size_t rest_y = Nyt % dims[0];
+
+    std::size_t px = coords[1], py = coords[0];
+    if (px < rest_x) block_size_x += 1;
+    if (py < rest_y) block_size_y += 1;
+
+    b.resize(block_size_x * block_size_y);
+}
+
+void assemble_rhs(std::vector<double> &b, UnitSquareGrid const& grid, std::function<double(double, double)> bc) {
+    std::fill(b.begin(), b.end(), 0.0);
+    std::size_t Nxt = grid.Nx - 2;
+    std::size_t Nyt = grid.Ny - 2;
+
+    const double hx = 1.0 / (grid.Nx - 1);
+    const double hy = 1.0 / (grid.Ny - 1);
+    const double hx2 = hx * hx;
+    const double hy2 = hy * hy;
+    double x_bndry, y_bndry;
+
+    // lower part
+    y_bndry = 0.0;
+    for (std::size_t idx = 0; idx < Nxt; ++idx) {
+        x_bndry = (idx + 1) * hx;
+        b[idx] += bc(x_bndry, y_bndry) / hy2;
+    }
+
+    // right part
+    x_bndry = 1.0;
+    for (std::size_t idy = 0; idy < Nyt; ++idy) {
+        y_bndry = (idy + 1) * hy;
+        b[(idy + 1) * Nxt - 1] += bc(x_bndry, y_bndry) / hx2;
+    }
+
+    // upper part
+    y_bndry = 1.0;
+    for (std::size_t idx = 0; idx < Nxt; ++idx) {
+        x_bndry = (idx + 1) * hx;
+        b[(Nyt - 1) * Nxt + idx] += bc(x_bndry, y_bndry) / hy2;
+    }
+
+    // left part
+    x_bndry = 0.0;
+    for (std::size_t idy = 0; idy < Nyt; ++idy) {
+        y_bndry = (idy + 1) * hy;
+        b[idy * Nxt] += bc(x_bndry, y_bndry) / hx2;
+    }
+}
+
+void assemble_matrix(CRSMatrix &A, UnitSquareGrid const& grid) {
+    const double hx = 1.0 / (grid.Nx - 1);
+    const double hy = 1.0 / (grid.Ny - 1);
+    std::size_t Nxt = grid.Nx - 2;
+    std::size_t Nyt = grid.Ny - 2;
+    const double hx2 = hx * hx;
+    const double hy2 = hy * hy;
+
+    const double diagonal_value = 2.0 / hx2 + 2.0 / hy2;
+    std::size_t node_number;
+    for (std::size_t idy = 0; idy < Nyt; ++idy) {
+        for (std::size_t idx = 0; idx < Nxt; ++idx) {
+            node_number = idy * Nxt + idx;
+            if (idy > 0) { A.append(- 1.0 / hy2, node_number - Nxt); }
+            if (idx > 0) { A.append(- 1.0 / hx2, node_number - 1); }
+            A.append(diagonal_value, node_number);
+            if (idx < Nxt - 1) { A.append(- 1.0 / hx2, node_number + 1); }
+            if (idy < Nyt - 1) { A.append(- 1.0 / hy2, node_number + Nxt); }
+
+            A.next_row();
+        }
+    }
+}
