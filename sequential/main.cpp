@@ -23,7 +23,7 @@ int main() {
     assemble_rhs(b, grid, bc);
 
     // assemble matrix
-    CRSMatrix A;
+    CRSMatrix A(5 * Nxt * Nyt, Nxt * Nyt);
     assemble_matrix(A, grid);
 
     // solve system

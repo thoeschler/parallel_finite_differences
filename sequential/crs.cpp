@@ -2,8 +2,14 @@
 
 #include <iostream>
 
+CRSMatrix::CRSMatrix(std::size_t num_values, std::size_t num_rows) {
+    _values.reserve(num_values);
+    _col_indices.reserve(num_values);
+    _row_indices.reserve(num_rows);
+}
+
 void CRSMatrix::next_row() {
-    this->_row_ptr.push_back(CRSMatrix::_values.size());
+    this->_row_indices.push_back(CRSMatrix::_values.size());
 }
 
 void CRSMatrix::append(double value, std::size_t col_index) {
@@ -23,10 +29,4 @@ void CRSMatrix::print_values() const {
         std::cout << _values[value_count] << " ";
     }
     std::cout << "\n";
-}
-
-FiniteDifferenceCRSMatrix::FiniteDifferenceCRSMatrix(std::size_t nrows, std::size_t ncols) {
-    _values.reserve(5 * nrows); // TODO: what is the number of nonzero entries?
-    _col_indices.reserve(5 * nrows);
-    _row_ptr.reserve(nrows + 1);
 }
