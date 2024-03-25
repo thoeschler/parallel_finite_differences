@@ -8,9 +8,10 @@
 #include <iostream>
 #include <vector>
 #include <mpi.h>
+#include <tuple>
 
-#define Nx 1000
-#define Ny 400
+#define Nx 18
+#define Ny 18
 
 double bc(double x, double y) {
     return x + y;
@@ -18,12 +19,11 @@ double bc(double x, double y) {
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
-    int rank, size;
+    int rank, size, root = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     // global grid
-    // const std::size_t Nxt = Nx - 2, Nyt = Ny - 2;
     UnitSquareGrid global_grid(Nx, Ny);
 
     // initialize cartesian topology
@@ -36,28 +36,33 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(comm_cart, &cart_rank);
     MPI_Cart_coords(comm_cart, rank, ndims, coords.data());
 
-    // assemble right hand side
-    std::vector<double> b;
-    initialize_rhs(b, global_grid, coords, dims);
-    // assemble_rhs(b, grid, bc);
+    // get local dimensions
+    std::size_t Nx_loc, Ny_loc, idx_glob_start, idy_glob_start;
+    std::tie(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start) = get_local_dimensions(global_grid, dims, coords);
+    LocalUnitSquareGrid local_grid(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start);
 
-    std::cout << rank << " " << cart_rank << " " << coords[1] << " " << coords[0] << " " << b.size() << "\n";
-    
-    // assemble_rhs(b, grid, bc);
+    // assemble right hand side locally
+    std::vector<double> b_loc;
+    assemble_local_rhs(b_loc, local_grid, coords, dims, bc);
 
-    // // assemble matrix
-    // CRSMatrix A(5 * Nxt * Nyt, Nxt * Nyt);
-    // assemble_matrix(A, grid);
+    // assemble matrix locally
+    CRSMatrix A_loc;
+    assemble_local_matrix(A_loc, local_grid);
 
-    // // solve system
-    // std::vector<double> u(Nxt * Nyt);
-    // cg(A, b, u);
+    // solve system
+    std::vector<double> u_loc;
+    const double tol = 1e-12;
+    parallel_cg(A_loc, b_loc, u_loc, comm_cart, tol);
 
-    // // compute error
-    // double error = compute_l1_error(u, bc, grid);
-    // std::cout << "l1 error: " << error << "\n";
-    // error = compute_linf_error(u, bc, grid);
-    // std::cout << "linf error: " << error << "\n";
+    // compute error
+    double l1_error = 0.0, linf_error = 0.0;
+    compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+    compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+
+    if (rank == root) {
+        std::cout << "l1 error:\t" << l1_error << "\n";
+        std::cout << "linf error:\t" << linf_error << "\n";
+    }
 
     MPI_Finalize();
 
