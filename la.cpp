@@ -61,35 +61,6 @@ void add_mult_sinout(std::vector<double> const&in, std::vector<double> &inout, d
     }
 }
 
-void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, const double tol) {
-    bool converged = false;
-    double alpha, gamma;
-    std::size_t size = b.size();
-    std::vector<double> p(size), r(size), Ap(size);
-
-    double norm_b_squared = dot(b, b);
-    double norm_r_old_squared, norm_r_squared;
-
-    // initialize p (direction) and r (residual)
-    matvec(A, u, Ap);
-    add_mult(b, Ap, r, -1.0);
-    p = r;
-    norm_r_old_squared = dot(r, r);
-
-    while (!converged) {
-        matvec(A, p, Ap);
-        alpha = dot(r, r) / dot(Ap, p);
-        add_mult_finout(u, p, alpha);
-        add_mult_finout(r, Ap, -alpha);
-        norm_r_squared = dot(r, r);
-        gamma = norm_r_squared / norm_r_old_squared;
-        norm_r_old_squared = norm_r_squared;
-        add_mult_sinout(r, p, gamma);
-
-        converged = (norm_r_squared <= tol * tol * norm_b_squared);
-    }
-}
-
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc, MPI_Comm comm_cart,
                  const double tol) {
     int rank;
