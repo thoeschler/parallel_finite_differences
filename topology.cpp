@@ -57,7 +57,7 @@ std::tuple<std::size_t, std::size_t, std::size_t, std::size_t> get_local_dimensi
     std::size_t Ny_loc = Nyt / dims[0];
 
     std::size_t idx_glob_start = Nx_loc * px;
-    std::size_t idy_glob_start = Ny_loc * px;
+    std::size_t idy_glob_start = Ny_loc * py;
 
     std::size_t rest_x = Nxt % dims[1];
     std::size_t rest_y = Nyt % dims[0];
