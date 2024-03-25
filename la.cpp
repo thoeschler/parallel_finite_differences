@@ -89,3 +89,33 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
         converged = (norm_r_squared <= tol * tol * norm_b_squared);
     }
 }
+
+void parallel_cg() {
+    // 0. compute p = r = b - Ax0
+    // MPI_Allgather
+    // before first step compute (r, r) (assumed to be know inside the loop)
+
+    // ITERATION START
+
+    // 1. compute Apk (locally) --> parallel matvec multiplication
+    // global pk needed, local A (assemble locally), 
+
+    // 2. compute ak = (rk, rk) / (Apk, pk)
+    // (rk, rk) already known, compute (Apk, pk) locally, then MPI_Reduce
+
+    // 3. xk+1 = xk + ak * pk
+    // compute locally
+
+    // 4. rk+1 = rk - ak Apk
+    // compute locally
+
+    // 5. gk = (rk+1, rk+1) / (rk, rk)
+    // (rk+1, rk+1): compute locally, then MPI_Reduce
+    // (rk, rk) already known
+
+    // 6. pk+1 = rk+1 + gk * pk
+    // compute locally then MPI_Allgather
+
+    // ITERATION END
+
+}
