@@ -1,87 +1,67 @@
 #include "finite_diff.hpp"
 #include "grid.hpp"
 
-#include <iostream>
-
 bool on_boundary(double x, double y) {
     constexpr double tol = 1e-7;
     return (std::abs(x) - 1) < tol || (std::abs(y) - 1.0) < tol;
 }
 
-void initialize_rhs(std::vector<double> &b, UnitSquareGrid const& global_grid, std::vector<int> const& coords,
-                    std::vector<int> const& dims) {
-    std::size_t Nxt = global_grid.Nx - 2, Nyt = global_grid.Ny - 2;
-    std::size_t block_size_x = Nxt / dims[1]; 
-    std::size_t block_size_y = Nyt / dims[0];
-
-    std::size_t rest_x = Nxt % dims[1];
-    std::size_t rest_y = Nyt % dims[0];
-
-    std::size_t px = coords[1], py = coords[0];
-    if (px < rest_x) block_size_x += 1;
-    if (py < rest_y) block_size_y += 1;
-
-    b.resize(block_size_x * block_size_y);
-}
-
-void assemble_rhs(std::vector<double> &b, UnitSquareGrid const& grid, std::function<double(double, double)> bc) {
-    std::fill(b.begin(), b.end(), 0.0);
-    std::size_t Nxt = grid.Nx - 2;
-    std::size_t Nyt = grid.Ny - 2;
-
-    const double hx = 1.0 / (grid.Nx - 1);
-    const double hy = 1.0 / (grid.Ny - 1);
+void assemble_local_rhs(std::vector<double> &b_loc, LocalUnitSquareGrid const& local_grid, std::vector<int> const& coords,
+                        std::vector<int> const& dims, std::function<double(double, double)> bc) {
+    b_loc.resize(local_grid.Nx * local_grid.Ny); // TODO: not every process needs this? for most just zeros
+    const double hx = 1.0 / (local_grid.Nx - 1);
+    const double hy = 1.0 / (local_grid.Ny - 1);
     const double hx2 = hx * hx;
     const double hy2 = hy * hy;
     double x_bndry, y_bndry;
+    int px = coords[1], py = dims[0] - coords[0] - 1;
 
-    // lower part
-    y_bndry = 0.0;
-    for (std::size_t idx = 0; idx < Nxt; ++idx) {
-        x_bndry = (idx + 1) * hx;
-        b[idx] += bc(x_bndry, y_bndry) / hy2;
+    if (px == 0) { // left side
+        x_bndry = 0.0;
+        for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
+            y_bndry = (local_grid.idy_glob_start + idy_loc + 1) * hy;
+            b_loc[idy_loc * local_grid.Nx] += bc(x_bndry, y_bndry) / hx2;
+        }
     }
-
-    // right part
-    x_bndry = 1.0;
-    for (std::size_t idy = 0; idy < Nyt; ++idy) {
-        y_bndry = (idy + 1) * hy;
-        b[(idy + 1) * Nxt - 1] += bc(x_bndry, y_bndry) / hx2;
+    else if (px == dims[1] - 1) { // right side
+        x_bndry = 1.0;
+        for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
+            y_bndry = (local_grid.idy_glob_start + idy_loc + 1) * hy;
+            b_loc[(idy_loc + 1) * local_grid.Nx - 1] += bc(x_bndry, y_bndry) / hx2;
+        }
     }
-
-    // upper part
-    y_bndry = 1.0;
-    for (std::size_t idx = 0; idx < Nxt; ++idx) {
-        x_bndry = (idx + 1) * hx;
-        b[(Nyt - 1) * Nxt + idx] += bc(x_bndry, y_bndry) / hy2;
+    if (py == 0) { // lower side
+        y_bndry = 0.0;
+        for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
+            x_bndry = (local_grid.idx_glob_start + idx_loc + 1) * hx;
+            b_loc[idx_loc] += bc(x_bndry, y_bndry) / hy2;
+        }
     }
-
-    // left part
-    x_bndry = 0.0;
-    for (std::size_t idy = 0; idy < Nyt; ++idy) {
-        y_bndry = (idy + 1) * hy;
-        b[idy * Nxt] += bc(x_bndry, y_bndry) / hx2;
+    else if (py == dims[0] - 1) { // upper side
+        y_bndry = 1.0;
+        for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
+            x_bndry = (local_grid.idx_glob_start + idx_loc + 1) * hx;
+            b_loc[(local_grid.Ny - 1) * local_grid.Nx + idx_loc] += bc(x_bndry, y_bndry) / hy2;
+        }
     }
 }
 
-void assemble_matrix(CRSMatrix &A, UnitSquareGrid const& grid) {
-    const double hx = 1.0 / (grid.Nx - 1);
-    const double hy = 1.0 / (grid.Ny - 1);
-    std::size_t Nxt = grid.Nx - 2;
-    std::size_t Nyt = grid.Ny - 2;
+void assemble_local_matrix(CRSMatrix &A, LocalUnitSquareGrid const& local_grid) {
+    const double hx = 1.0 / (local_grid.Nx - 1);
+    const double hy = 1.0 / (local_grid.Ny - 1);
     const double hx2 = hx * hx;
     const double hy2 = hy * hy;
 
     const double diagonal_value = 2.0 / hx2 + 2.0 / hy2;
-    std::size_t node_number;
-    for (std::size_t idy = 0; idy < Nyt; ++idy) {
-        for (std::size_t idx = 0; idx < Nxt; ++idx) {
-            node_number = idy * Nxt + idx;
-            if (idy > 0) { A.append(- 1.0 / hy2, node_number - Nxt); }
-            if (idx > 0) { A.append(- 1.0 / hx2, node_number - 1); }
-            A.append(diagonal_value, node_number);
-            if (idx < Nxt - 1) { A.append(- 1.0 / hx2, node_number + 1); }
-            if (idy < Nyt - 1) { A.append(- 1.0 / hy2, node_number + Nxt); }
+    std::size_t node_loc;
+    for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
+        for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
+            node_loc = idy_loc * local_grid.Nx + idx_loc;
+            if (idy_loc > 0) { A.append(- 1.0 / hy2, node_loc - local_grid.Nx); }
+            if (idx_loc > 0) { A.append(- 1.0 / hx2, node_loc - 1); }
+            A.append(diagonal_value, node_loc);
+            if (idx_loc < local_grid.Nx - 1) { A.append(- 1.0 / hx2, node_loc + 1); }
+            if (idy_loc < local_grid.Ny - 1) { A.append(- 1.0 / hy2, node_loc + local_grid.Nx); }
 
             A.next_row();
         }

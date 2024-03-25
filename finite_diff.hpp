@@ -7,8 +7,7 @@
 #include <functional>
 #include <mpi.h>
 
-void initialize_rhs(std::vector<double> &b, UnitSquareGrid const& global_grid, std::vector<int> const& coords,
-                    std::vector<int> const& dims);
-void assemble_rhs(std::vector<double> &b, UnitSquareGrid const& grid, std::function<double(double, double)> bc);
+void assemble_local_rhs(std::vector<double> &b_loc, LocalUnitSquareGrid const& local_grid, std::vector<int> const &coords,
+                  std::vector<int> const& dims, std::function<double(double, double)> bc);
 
-void assemble_matrix(CRSMatrix &A, UnitSquareGrid const& grid);
+void assemble_local_matrix(CRSMatrix &A, LocalUnitSquareGrid const& local_grid);
