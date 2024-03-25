@@ -94,7 +94,6 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
                  const double tol) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
-    std::cout << rank << "\n";
 
     std::size_t size_loc = b_loc.size();
     u_loc.resize(size_loc);
@@ -138,8 +137,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         // 6. pk+1 = rk+1 + gk * pk
         add_mult_sinout(r_loc, p_loc, gamma);
 
-        if (rank == 0) {
-            std::cout << "it " << counter << ": rr = " << rr << std::endl;
+        if (rank == 0 && counter % 100 == 0) {
+            std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
         }
         ++counter;
         converged = (rr <= tol * tol * bb);
