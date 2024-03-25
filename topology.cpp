@@ -62,10 +62,21 @@ std::tuple<std::size_t, std::size_t, std::size_t, std::size_t> get_local_dimensi
     std::size_t rest_x = Nxt % dims[1];
     std::size_t rest_y = Nyt % dims[0];
 
-    if (px < rest_x) Nx_loc += 1;
-    if (py < rest_y) Ny_loc += 1;
-    idx_glob_start += px;
-    idy_glob_start += py;
+    if (px < rest_x) {
+        Nx_loc += 1;
+        idx_glob_start += px;
+    }
+    else {
+        idx_glob_start += rest_x;
+    }
+
+    if (py < rest_y) {
+        Ny_loc += 1;
+        idy_glob_start += py;
+    }
+    else {
+        idy_glob_start += rest_y;
+    }
 
     return std::make_tuple(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start);
 }
