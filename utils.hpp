@@ -13,11 +13,11 @@ void compute_l1_error(double *error, std::vector<double> const& u_loc, UnitSquar
     double hx = 1.0 / (global_grid.Nx - 1), hy = 1.0 / (global_grid.Ny - 1);
     double e_loc = 0.0;
     double x, y;
-    for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
-        for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
-            x = (idx + local_grid.idx_glob_start + 1) * hx; // + 1 because of the boundary
-            y = (idy + local_grid.idy_glob_start + 1) * hy; // + 1 because of the boundary
-            e_loc += std::abs(u_loc[idy * local_grid.Nx + idx] - u_ana(x, y)); 
+    for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
+        for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
+            x = (idx_loc + local_grid.idx_glob_start + 1) * hx; // + 1 because of the boundary
+            y = (idy_loc + local_grid.idy_glob_start + 1) * hy; // + 1 because of the boundary
+            e_loc += std::abs(u_loc[idy_loc * local_grid.Nx + idx_loc] - u_ana(x, y)); 
         }
     }
     MPI_Reduce(&e_loc, error, 1, MPI_DOUBLE, MPI_SUM, root, comm);
@@ -30,11 +30,11 @@ void compute_linf_error(double *error, std::vector<double> const& u_loc, UnitSqu
     double hx = 1.0 / (global_grid.Nx - 1), hy = 1.0 / (global_grid.Ny - 1);
     double e, e_loc = 0.0;
     double x, y;
-    for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
-        for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
-            x = (idx + local_grid.idx_glob_start + 1) * hx;
-            y = (idy + local_grid.idy_glob_start + 1) * hy;
-            e = std::abs(u_loc[idy * local_grid.Nx + idx] - u_ana(x, y));
+    for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
+        for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
+            x = (idx_loc + local_grid.idx_glob_start + 1) * hx;
+            y = (idy_loc + local_grid.idy_glob_start + 1) * hy;
+            e = std::abs(u_loc[idy_loc * local_grid.Nx + idx_loc] - u_ana(x, y));
             if (e > e_loc) e_loc = e;
         }
     }
