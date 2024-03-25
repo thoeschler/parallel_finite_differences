@@ -43,11 +43,11 @@ int main(int argc, char** argv) {
 
     // assemble right hand side locally
     std::vector<double> b_loc;
-    assemble_local_rhs(b_loc, local_grid, coords, dims, bc);
+    assemble_local_rhs(b_loc, global_grid, local_grid, coords, dims, bc);
 
     // assemble matrix locally
     CRSMatrix A_loc;
-    assemble_local_matrix(A_loc, local_grid);
+    assemble_local_matrix(A_loc, global_grid, local_grid);
 
     // solve system
     std::vector<double> u_loc;
