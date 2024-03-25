@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <cmath>
 
-void matmul(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &out) {
+void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &out) {
     std::fill(out.begin(), out.end(), 0.0);
     std::size_t row = 0;
     std::size_t row_index = A.row_index(row + 1);
@@ -71,13 +71,13 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
     double norm_r_old_squared, norm_r_squared;
 
     // initialize p (direction) and r (residual)
-    matmul(A, u, Ap);
+    matvec(A, u, Ap);
     add_mult(b, Ap, r, -1.0);
     p = r;
     norm_r_old_squared = dot(r, r);
 
     while (!converged) {
-        matmul(A, p, Ap);
+        matvec(A, p, Ap);
         alpha = dot(r, r) / dot(Ap, p);
         add_mult_finout(u, p, alpha);
         add_mult_finout(r, Ap, -alpha);
@@ -90,32 +90,58 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
     }
 }
 
-void parallel_cg() {
+void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc, MPI_Comm comm_cart,
+                 const double tol) {
+    int rank;
+    MPI_Comm_rank(comm_cart, &rank);
+    std::cout << rank << "\n";
+
+    std::size_t size_loc = b_loc.size();
+    u_loc.resize(size_loc);
+    std::vector<double> r_loc(size_loc), p_loc(size_loc), Ap_loc(size_loc);
+
     // 0. compute p = r = b - Ax0
-    // MPI_Allgather
-    // before first step compute (r, r) (assumed to be know inside the loop)
+    r_loc = p_loc = b_loc;
+    double rr_loc = dot(r_loc, r_loc);
+    double bb_loc = dot(b_loc, b_loc);
+    double rr, bb;
+    MPI_Allreduce(&rr_loc, &rr, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+    MPI_Allreduce(&bb_loc, &bb, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
 
-    // ITERATION START
+    // initialize other variables
+    double alpha, gamma, rr_old;
 
-    // 1. compute Apk (locally) --> parallel matvec multiplication
-    // global pk needed, local A (assemble locally), 
+    bool converged = (rr <= tol * tol * bb);
+    std::size_t counter = 0;
+    while (!converged) {
+        // 1. compute Apk (locally) --> parallel matvec multiplication
+        matvec(A_loc, p_loc, Ap_loc);
 
-    // 2. compute ak = (rk, rk) / (Apk, pk)
-    // (rk, rk) already known, compute (Apk, pk) locally, then MPI_Reduce
+        // 2. compute ak = (rk, rk) / (Apk, pk)
+        double App_loc = dot(Ap_loc, p_loc);
+        double App;
+        MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+        alpha = rr / App;
 
-    // 3. xk+1 = xk + ak * pk
-    // compute locally
+        // 3. xk+1 = xk + ak * pk
+        add_mult_finout(u_loc, p_loc, alpha);
 
-    // 4. rk+1 = rk - ak Apk
-    // compute locally
+        // 4. rk+1 = rk - ak Apk
+        add_mult_finout(r_loc, Ap_loc, -alpha);
 
-    // 5. gk = (rk+1, rk+1) / (rk, rk)
-    // (rk+1, rk+1): compute locally, then MPI_Reduce
-    // (rk, rk) already known
+        // 5. gk = (rk+1, rk+1) / (rk, rk)
+        rr_old = rr;
+        rr_loc = dot(r_loc, r_loc);
+        MPI_Allreduce(&rr_loc, &rr, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+        gamma = rr / rr_old;
 
-    // 6. pk+1 = rk+1 + gk * pk
-    // compute locally then MPI_Allgather
+        // 6. pk+1 = rk+1 + gk * pk
+        add_mult_sinout(r_loc, p_loc, gamma);
 
-    // ITERATION END
-
+        if (rank == 0) {
+            std::cout << "it " << counter << ": rr = " << rr << std::endl;
+        }
+        ++counter;
+        converged = (rr <= tol * tol * bb);
+    }
 }
