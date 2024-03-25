@@ -6,11 +6,12 @@ bool on_boundary(double x, double y) {
     return (std::abs(x) - 1) < tol || (std::abs(y) - 1.0) < tol;
 }
 
-void assemble_local_rhs(std::vector<double> &b_loc, LocalUnitSquareGrid const& local_grid, std::vector<int> const& coords,
+void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global_grid,
+                        LocalUnitSquareGrid const& local_grid, std::vector<int> const& coords,
                         std::vector<int> const& dims, std::function<double(double, double)> bc) {
     b_loc.resize(local_grid.Nx * local_grid.Ny); // TODO: not every process needs this? for most just zeros
-    const double hx = 1.0 / (local_grid.Nx - 1);
-    const double hy = 1.0 / (local_grid.Ny - 1);
+    const double hx = 1.0 / (global_grid.Nx - 1);
+    const double hy = 1.0 / (global_grid.Ny - 1);
     const double hx2 = hx * hx;
     const double hy2 = hy * hy;
     double x_bndry, y_bndry;
@@ -46,9 +47,9 @@ void assemble_local_rhs(std::vector<double> &b_loc, LocalUnitSquareGrid const& l
     }
 }
 
-void assemble_local_matrix(CRSMatrix &A, LocalUnitSquareGrid const& local_grid) {
-    const double hx = 1.0 / (local_grid.Nx - 1);
-    const double hy = 1.0 / (local_grid.Ny - 1);
+void assemble_local_matrix(CRSMatrix &A, UnitSquareGrid const& global_grid, LocalUnitSquareGrid const& local_grid) {
+    const double hx = 1.0 / (global_grid.Nx - 1);
+    const double hy = 1.0 / (global_grid.Ny - 1);
     const double hx2 = hx * hx;
     const double hy2 = hy * hy;
 
