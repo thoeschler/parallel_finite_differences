@@ -10,8 +10,8 @@
 #include <mpi.h>
 #include <tuple>
 
-#define Nx 18
-#define Ny 18
+#define Nx 10
+#define Ny 10
 
 double bc(double x, double y) {
     return x + y;
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     // get local dimensions
     std::size_t Nx_loc, Ny_loc, idx_glob_start, idy_glob_start;
     std::tie(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start) = get_local_dimensions(global_grid, dims, coords);
-    LocalUnitSquareGrid local_grid(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start);
+    LocalUnitSquareGrid local_grid(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start, coords, dims);
 
     // assemble right hand side locally
     std::vector<double> b_loc;
@@ -47,12 +47,12 @@ int main(int argc, char** argv) {
 
     // assemble matrix locally
     CRSMatrix A_loc;
-    assemble_local_matrix(A_loc, global_grid, local_grid);
+    assemble_local_matrix(A_loc, dims, coords, global_grid, local_grid);
 
     // solve system
     std::vector<double> u_loc;
     const double tol = 1e-12;
-    parallel_cg(A_loc, b_loc, u_loc, comm_cart, tol);
+    parallel_cg(A_loc, b_loc, u_loc, local_grid, comm_cart, tol);
 
     // compute error
     double l1_error = 0.0, linf_error = 0.0;
