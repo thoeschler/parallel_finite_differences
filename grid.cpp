@@ -1,5 +1,12 @@
 #include "grid.hpp"
 
+void UnitSquareGrid::info() const {
+    std::cout << "LocalUnitSquareGrid with\n\n";
+    std::cout << " Dofs: Nx = " << Nx << ", Ny = " << Ny << "\n";
+
+    std::cout << "\n\n";
+}
+
 void LocalUnitSquareGrid::info() const {
     std::cout << "LocalUnitSquareGrid with\n\n";
     std::cout << " Local dofs: Nx = " << Nx << ", Ny = " << Ny << "\n";
