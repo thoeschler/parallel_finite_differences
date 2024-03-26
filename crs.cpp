@@ -55,5 +55,6 @@ void CRSMatrix::print_data() const {
 }
 
 void CRSMatrix::info() const {
-    std::cout << "CRSMatrix with \n nrows: " << nrows() << ",\n nvalues: " << size() << "\n\n";
+    std::cout << "CRSMatrix with \n number of rows: " << nrows();
+    std::cout << "\n number of nonzero values: " << size() << "\n\n";
 }
