@@ -97,8 +97,8 @@ void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& 
                          LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
     for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
-        for (std::size_t idy = 0; idy > local_grid.Ny; ++idy) {
-            int index = (local_grid.has_lower_neighbor + idy) * Nxt + 1 + idx ;
+        for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
+            int index = (local_grid.has_lower_neighbor + idy) * Nxt + local_grid.has_left_neighbor + idx ;
             p_loc[index] = b_loc[idy * local_grid.Nx + idx];
         }
     }
@@ -121,12 +121,13 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
     // in p_loc data with neighboring processes is exchanged, so it must be larger
     std::vector<double> p_loc_padded(size_loc_padded);
-    // get start iterator of local data
-    auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
+    // get start iterator of **local** data
+    auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt + local_grid.has_left_neighbor;
 
     // 0. compute p = r = b - Ax0, initial guess is always x0=0 here
     r_loc = b_loc;
     copy_b_loc_to_p_loc(p_loc_padded, b_loc, local_grid);
+
     double rr_loc = dot(r_loc, r_loc);
     double bb_loc = dot(b_loc, b_loc);
     double rr, bb;
@@ -153,55 +154,55 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
             req_recv_left, req_recv_right, req_recv_up, req_recv_down;
 
         // up
-        MPI_Isend(p_loc_padded.data() + (Nyt - 2) * Nxt + 1, local_grid.Nx, MPI_DOUBLE, up, rank, comm_cart, &req_send_up);
-        MPI_Irecv(p_loc_padded.data() + (Nyt - 1) * Nxt + 1, local_grid.Nx, MPI_DOUBLE, up, up, comm_cart, &req_recv_up);
+        // MPI_Isend(p_loc_padded.data() + (Nyt - 2) * Nxt + 1, local_grid.Nx, MPI_DOUBLE, up, rank, comm_cart, &req_send_up);
+        // MPI_Irecv(p_loc_padded.data() + (Nyt - 1) * Nxt + 1, local_grid.Nx, MPI_DOUBLE, up, up, comm_cart, &req_recv_up);
 
-        // down
-        MPI_Isend(p_loc_padded.data() + Nxt + 1, local_grid.Nx, MPI_DOUBLE, down, rank, comm_cart, &req_send_down);
-        MPI_Irecv(p_loc_padded.data() + 1, local_grid.Nx, MPI_DOUBLE, down, down, comm_cart, &req_recv_down);
+        // // down
+        // MPI_Isend(p_loc_padded.data() + Nxt + 1, local_grid.Nx, MPI_DOUBLE, down, rank, comm_cart, &req_send_down);
+        // MPI_Irecv(p_loc_padded.data() + 1, local_grid.Nx, MPI_DOUBLE, down, down, comm_cart, &req_recv_down);
 
-        // left
-        MPI_Isend(p_loc_padded.data() + Nxt + 1, 1, col_type, left, rank, comm_cart, &req_send_left);
-        MPI_Irecv(p_loc_padded.data() + Nxt, 1, col_type, left, left, comm_cart, &req_recv_left);
+        // // left
+        // MPI_Isend(p_loc_padded.data() + Nxt + 1, 1, col_type, left, rank, comm_cart, &req_send_left);
+        // MPI_Irecv(p_loc_padded.data() + Nxt, 1, col_type, left, left, comm_cart, &req_recv_left);
 
-        // right
-        MPI_Isend(p_loc_padded.data() + 2 * Nxt - 2, 1, col_type, right, rank, comm_cart, &req_send_right);
-        MPI_Irecv(p_loc_padded.data() + 2 * Nxt - 1, 1, col_type, right, right, comm_cart, &req_recv_right);
+        // // right
+        // MPI_Isend(p_loc_padded.data() + 2 * Nxt - 2, 1, col_type, right, rank, comm_cart, &req_send_right);
+        // MPI_Irecv(p_loc_padded.data() + 2 * Nxt - 1, 1, col_type, right, right, comm_cart, &req_recv_right);
 
-        MPI_Wait(&req_recv_down, MPI_STATUS_IGNORE);
-        MPI_Wait(&req_recv_up, MPI_STATUS_IGNORE);
-        MPI_Wait(&req_recv_left, MPI_STATUS_IGNORE);
-        MPI_Wait(&req_recv_right, MPI_STATUS_IGNORE);
+        // MPI_Wait(&req_recv_down, MPI_STATUS_IGNORE);
+        // MPI_Wait(&req_recv_up, MPI_STATUS_IGNORE);
+        // MPI_Wait(&req_recv_left, MPI_STATUS_IGNORE);
+        // MPI_Wait(&req_recv_right, MPI_STATUS_IGNORE);
 
-        // 2. compute Apk (locally) --> parallel matvec multiplication
-        matvec(A_loc, p_loc_padded, Ap_loc);        
+        // // 2. compute Apk (locally) --> parallel matvec multiplication
+        // matvec(A_loc, p_loc_padded, Ap_loc);        
 
-        // 3. compute ak = (rk, rk) / (Apk, pk)
-        auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        double App_loc = dot(Ap_loc, p_loc_start);
-        double App;
-        MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
-        alpha = rr / App;
+        // // 3. compute ak = (rk, rk) / (Apk, pk)
+        // auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
+        // double App_loc = dot(Ap_loc, p_loc_start);
+        // double App;
+        // MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+        // alpha = rr / App;
 
-        // 4. xk+1 = xk + ak * pk
-        add_mult_finout(u_loc, p_loc_start, alpha);
+        // // 4. xk+1 = xk + ak * pk
+        // add_mult_finout(u_loc, p_loc_start, alpha);
 
-        // 5. rk+1 = rk - ak Apk
-        add_mult_finout(r_loc, Ap_loc, -alpha);
+        // // 5. rk+1 = rk - ak Apk
+        // add_mult_finout(r_loc, Ap_loc, -alpha);
 
-        // 6. gk = (rk+1, rk+1) / (rk, rk)
-        rr_old = rr;
-        rr_loc = dot(r_loc, r_loc);
-        MPI_Allreduce(&rr_loc, &rr, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
-        gamma = rr / rr_old;
+        // // 6. gk = (rk+1, rk+1) / (rk, rk)
+        // rr_old = rr;
+        // rr_loc = dot(r_loc, r_loc);
+        // MPI_Allreduce(&rr_loc, &rr, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+        // gamma = rr / rr_old;
 
-        // 7. pk+1 = rk+1 + gk * pk
-        p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        add_mult_sinout(r_loc, p_loc_start, gamma);
+        // // 7. pk+1 = rk+1 + gk * pk
+        // p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
+        // add_mult_sinout(r_loc, p_loc_start, gamma);
 
-        if (rank == 0) {// && counter % 100 == 0) {
-            std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
-        }
+        // if (rank == 0) {// && counter % 100 == 0) {
+        //     std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
+        // }
         ++counter;
         converged = (rr <= tol * tol * bb);
     }
