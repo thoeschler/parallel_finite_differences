@@ -19,9 +19,9 @@ struct LocalUnitSquareGrid {
                             Ny = Ny_;
                             idx_glob_start = idx_glob_start_;
                             idy_glob_start = idy_glob_start_;
-                            has_lower_neighbor = coords[0] > 0;
-                            has_upper_neighbor = coords[0] < dims[0] - 1;
+                            has_upper_neighbor = coords[0] > 0;
+                            has_lower_neighbor = coords[0] < dims[0] - 1;
                             has_left_neighbor = coords[1] > 0;
                             has_right_neighbor = coords[1] < dims[1] - 1;
-                        };
+                        }
 };
