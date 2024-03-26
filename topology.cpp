@@ -9,9 +9,8 @@ inline bool is_closer(double number, double than, double to) {
 }
 
 void initialize_cartesian_topology_dimensions(const int ndims, std::vector<int> &dims, UnitSquareGrid const& global_grid) {
-    int nnodes, size;
+    int nnodes;
     MPI_Comm_size(MPI_COMM_WORLD, &nnodes);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
     
     // first let MPI create dims
     std::fill(dims.begin(), dims.end(), 0);
@@ -34,7 +33,7 @@ void initialize_cartesian_topology_dimensions(const int ndims, std::vector<int> 
 
     double new_proc_ratio;
     std::vector<int> new_dims(2);
-    for (int dimx = dims[1] - 1; dimx > 0 && dimx <= size; dimx += direction) {
+    for (int dimx = dims[1] - 1; dimx > 0 && dimx <= nnodes; dimx += direction) {
         if (is_divisible(nnodes, dimx)) {
             new_dims = {0, dimx};
             MPI_Dims_create(nnodes, ndims, new_dims.data());
