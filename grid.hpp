@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <iostream>
 
 struct UnitSquareGrid {
     std::size_t Nx;
@@ -24,4 +25,5 @@ struct LocalUnitSquareGrid {
                             has_left_neighbor = coords[1] > 0;
                             has_right_neighbor = coords[1] < dims[1] - 1;
                         }
+    void info() const;
 };

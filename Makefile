@@ -1,8 +1,8 @@
 CXX=mpicxx
 CXXFLAGS=-Wall -O3 -march=native
 
-build: main.o la.o crs.o finite_diff.o topology.o
-	$(CXX) $(CXXFLAGS) topology.o finite_diff.o la.o crs.o main.o -o main.out
+build: main.o la.o crs.o finite_diff.o topology.o grid.o
+	$(CXX) $(CXXFLAGS) topology.o grid.o finite_diff.o la.o crs.o main.o -o main.out
 
 run:
 	np=$1;
