@@ -55,7 +55,7 @@ void assemble_local_matrix(CRSMatrix &A, std::vector<int> const& coords, std::ve
     const double hy2 = hy * hy;
 
     int px = coords[1];
-    int py = dims[0] - coords[0];
+    int py = dims[0] - coords[0] - 1;
 
     // local matrix size
     bool pad_left = px > 0;
