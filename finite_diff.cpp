@@ -68,7 +68,7 @@ void assemble_local_matrix(CRSMatrix &A, std::vector<int> const& coords, std::ve
     // loop over all local nodes
     const double diagonal_value = 2.0 / hx2 + 2.0 / hy2;
     std::size_t col_self, col_left, col_right, col_down, col_up;
-    if (pad_down) A.next_row(); // skip first row
+
     for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
         for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
             col_self = (idy_loc + pad_down) * Nxt + idx_loc + pad_left;
@@ -93,5 +93,4 @@ void assemble_local_matrix(CRSMatrix &A, std::vector<int> const& coords, std::ve
             A.next_row();
         }
     }
-    if (pad_up) A.next_row();
 }
