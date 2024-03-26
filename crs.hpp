@@ -17,5 +17,9 @@ class CRSMatrix {
         std::size_t col_index(std::size_t index) const { return _col_indices[index]; }
         std::size_t size() const { return _values.size(); }
         double value(std::size_t index) const { return _values[index]; }
+        void print_row_data() const;
+        void print_column_data() const;
         void print_values() const;
+        void print_data() const;
+        void info() const;
 };

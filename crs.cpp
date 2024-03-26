@@ -17,16 +17,43 @@ void CRSMatrix::append(double value, std::size_t col_index) {
     _col_indices.push_back(col_index);
 }
 
+void CRSMatrix::print_column_data() const {
+    std::cout << "Column data:\n\n";
+    for (std::size_t value: _col_indices) {
+        std::cout << value << " ";
+    }
+    std::cout << "\n\n";
+}
+
+void CRSMatrix::print_row_data() const {
+    std::cout << "Row data:\n\n";
+    for (std::size_t value: _row_indices) {
+        std::cout << value << " ";
+    }
+    std::cout << "\n\n";
+}
+
 void CRSMatrix::print_values() const {
+    std::cout << "Values:\n\n";
     std::size_t row = 0;
     std::size_t row_index = this->row_index(row + 1);
     for (std::size_t value_count = 0; value_count < this->size(); ++value_count) {
         if (value_count == row_index) {
             ++row;
-            row_index = this-> row_index(row + 1);
+            row_index = this->row_index(row + 1);
             std::cout << "\n";
         }
         std::cout << _values[value_count] << " ";
     }
     std::cout << "\n";
+}
+
+void CRSMatrix::print_data() const {
+    print_column_data();
+    print_row_data();
+    print_values();
+}
+
+void CRSMatrix::info() const {
+    std::cout << "CRSMatrix with \n nrows: " << nrows() << ",\n nvalues: " << size() << "\n\n";
 }
