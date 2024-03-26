@@ -58,18 +58,17 @@ void assemble_local_matrix(CRSMatrix &A, std::vector<int> const& coords, std::ve
     int py = dims[0] - coords[0];
 
     // local matrix size
-    std::size_t Nxt = local_grid.Nx + 1 * (px > 0) + 1 * (px < dims[1] - 1);
-    // std::size_t Nyt = local_grid.Ny + 1 * (py > 0) + 1 * (py < dims[0] - 1);
-    int pad_left = (py > 0) ? 1: 0;
-    // std::size_t pad_right = (py < dims[1] - 1) ? 1: 0;
-    int pad_down = (px > 0) ? 1: 0;
-    // std::size_t pad_up = (px < dims[0] - 1) ? 1: 0;
-
-    // TODO: add zero rows when padding up / down?
+    bool pad_left = px > 0;
+    bool pad_right = px < dims[1] - 1;
+    bool pad_up = py < dims[0] - 1;
+    bool pad_down = py > 0;
+    std::size_t Nxt = local_grid.Nx + pad_left + pad_right;
+    std::size_t Nyt = local_grid.Ny + pad_up + pad_down;
 
     // loop over all local nodes
     const double diagonal_value = 2.0 / hx2 + 2.0 / hy2;
     std::size_t col_self, col_left, col_right, col_down, col_up;
+    if (pad_down) A.next_row(); // skip first row
     for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
         for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
             col_self = (idy_loc + pad_down) * Nxt + idx_loc + pad_left;
@@ -94,4 +93,5 @@ void assemble_local_matrix(CRSMatrix &A, std::vector<int> const& coords, std::ve
             A.next_row();
         }
     }
+    if (pad_up) A.next_row();
 }
