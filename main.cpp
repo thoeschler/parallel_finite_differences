@@ -10,8 +10,8 @@
 #include <mpi.h>
 #include <tuple>
 
-#define Nx 10
-#define Ny 10
+#define Nx 8
+#define Ny 8
 
 double bc(double x, double y) {
     return x + y;
@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
     initialize_cartesian_topology_dimensions(ndims, dims, global_grid);
     MPI_Comm comm_cart;
     MPI_Cart_create(MPI_COMM_WORLD, ndims, dims.data(), periods.data(), 1, &comm_cart);
+
     int cart_rank;
     MPI_Comm_rank(comm_cart, &cart_rank);
     MPI_Cart_coords(comm_cart, rank, ndims, coords.data());
@@ -54,15 +55,15 @@ int main(int argc, char** argv) {
     const double tol = 1e-12;
     parallel_cg(A_loc, b_loc, u_loc, local_grid, comm_cart, tol);
 
-    // compute error
-    double l1_error = 0.0, linf_error = 0.0;
-    compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
-    compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+    // // compute error
+    // double l1_error = 0.0, linf_error = 0.0;
+    // compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+    // compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
 
-    if (rank == root) {
-        std::cout << "l1 error:\t" << l1_error << "\n";
-        std::cout << "linf error:\t" << linf_error << "\n";
-    }
+    // if (rank == root) {
+    //     std::cout << "l1 error:\t" << l1_error << "\n";
+    //     std::cout << "linf error:\t" << linf_error << "\n";
+    // }
 
     MPI_Finalize();
 

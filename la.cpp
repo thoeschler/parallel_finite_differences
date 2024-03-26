@@ -110,8 +110,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Comm_rank(comm_cart, &rank);
 
     // allocate vectors u, r, Ap
-    assert(b_loc.size() == local_grid.Nx * local_grid.Ny);
-    std::size_t size_loc = b_loc.size();
+    std::size_t size_loc = local_grid.Nx * local_grid.Ny;
     u_loc.resize(size_loc);
     std::vector<double> r_loc(size_loc), Ap_loc(size_loc);
 
