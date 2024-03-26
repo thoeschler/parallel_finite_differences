@@ -87,6 +87,8 @@ void get_neighbor_ranks(int &up, int &down, int &left, int &right, MPI_Comm comm
     MPI_Comm_rank(comm_cart, &rank);
     std::vector<int> neighbor_ranks(4, -1); // upper / lower / left / right order
     MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
+    // TODO: is the ordering implementation dependent?
+
     up = neighbor_ranks[0] >= 0 ? neighbor_ranks[0] : MPI_PROC_NULL;
     down = neighbor_ranks[1] >= 0 ? neighbor_ranks[1] : MPI_PROC_NULL;
     left = neighbor_ranks[2] >= 0 ? neighbor_ranks[2] : MPI_PROC_NULL;
@@ -121,8 +123,6 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
     // in p_loc data with neighboring processes is exchanged, so it must be larger
     std::vector<double> p_loc_padded(size_loc_padded);
-    // get start iterator of **local** data
-    auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt + local_grid.has_left_neighbor;
 
     // 0. compute p = r = b - Ax0, initial guess is always x0=0 here
     r_loc = b_loc;
@@ -143,37 +143,52 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     int up, down, left, right;
     get_neighbor_ranks(up, down, left, right, comm_cart);
 
-    // define "column" type
+    // define "column" type for communication with left/right neighbors
     MPI_Datatype col_type;
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
 
     while (!converged && counter < 10) {
-        // 1. communicate pk
+        /*
+        1. step:
+        Start exchange of pk. Communication is only initialized if
+        a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
+        */
         MPI_Request req_send_left, req_send_right, req_send_up, req_send_down,
             req_recv_left, req_recv_right, req_recv_up, req_recv_down;
 
         // up
-        // MPI_Isend(p_loc_padded.data() + (Nyt - 2) * Nxt + 1, local_grid.Nx, MPI_DOUBLE, up, rank, comm_cart, &req_send_up);
-        // MPI_Irecv(p_loc_padded.data() + (Nyt - 1) * Nxt + 1, local_grid.Nx, MPI_DOUBLE, up, up, comm_cart, &req_recv_up);
+        double *sendbuf_up = p_loc_padded.data() + (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
+        double *recvbuf_up = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
+        MPI_Isend(sendbuf_up, local_grid.Nx, MPI_DOUBLE, up, rank, comm_cart, &req_send_up);
+        MPI_Irecv(recvbuf_up, local_grid.Nx, MPI_DOUBLE, up, MPI_ANY_TAG, comm_cart, &req_recv_up);
 
-        // // down
-        // MPI_Isend(p_loc_padded.data() + Nxt + 1, local_grid.Nx, MPI_DOUBLE, down, rank, comm_cart, &req_send_down);
-        // MPI_Irecv(p_loc_padded.data() + 1, local_grid.Nx, MPI_DOUBLE, down, down, comm_cart, &req_recv_down);
+        // down
+        double *sendbuf_down = p_loc_padded.data() + Nxt + local_grid.has_left_neighbor;
+        double *recvbuf_down = p_loc_padded.data() + local_grid.has_left_neighbor;
+        MPI_Isend(sendbuf_down, local_grid.Nx, MPI_DOUBLE, down, rank, comm_cart, &req_send_down);
+        MPI_Irecv(recvbuf_down, local_grid.Nx, MPI_DOUBLE, down, MPI_ANY_TAG, comm_cart, &req_recv_down);
 
-        // // left
-        // MPI_Isend(p_loc_padded.data() + Nxt + 1, 1, col_type, left, rank, comm_cart, &req_send_left);
-        // MPI_Irecv(p_loc_padded.data() + Nxt, 1, col_type, left, left, comm_cart, &req_recv_left);
+        // left
+        double *sendbuf_left = p_loc_padded.data() + local_grid.has_lower_neighbor * Nxt + 1;
+        double *recvbuf_left = p_loc_padded.data() + local_grid.has_lower_neighbor * Nxt;
+        MPI_Isend(sendbuf_left, 1, col_type, left, rank, comm_cart, &req_send_left);
+        MPI_Irecv(recvbuf_left, 1, col_type, left, MPI_ANY_TAG, comm_cart, &req_recv_left);
 
-        // // right
-        // MPI_Isend(p_loc_padded.data() + 2 * Nxt - 2, 1, col_type, right, rank, comm_cart, &req_send_right);
-        // MPI_Irecv(p_loc_padded.data() + 2 * Nxt - 1, 1, col_type, right, right, comm_cart, &req_recv_right);
+        // right
+        double *sendbuf_right = p_loc_padded.data() + (1 + local_grid.has_lower_neighbor) * Nxt - 2;
+        double *recvbuf_right = p_loc_padded.data() + (1 + local_grid.has_lower_neighbor) * Nxt - 1;
+        MPI_Isend(sendbuf_right, 1, col_type, right, rank, comm_cart, &req_send_right);
+        MPI_Irecv(recvbuf_right, 1, col_type, right, MPI_ANY_TAG, comm_cart, &req_recv_right);
 
-        // MPI_Wait(&req_recv_down, MPI_STATUS_IGNORE);
-        // MPI_Wait(&req_recv_up, MPI_STATUS_IGNORE);
-        // MPI_Wait(&req_recv_left, MPI_STATUS_IGNORE);
-        // MPI_Wait(&req_recv_right, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_recv_down, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_recv_up, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_recv_left, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_recv_right, MPI_STATUS_IGNORE);
 
+        /*
+        2. step:
+        */
         // // 2. compute Apk (locally) --> parallel matvec multiplication
         // matvec(A_loc, p_loc_padded, Ap_loc);        
 
