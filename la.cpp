@@ -3,14 +3,13 @@
 #include <assert.h>
 
 void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result) {
-    std::size_t row = 0;
-    std::size_t row_index = A.row_index(row + 1);
-    for (std::size_t value_count = 0; value_count < A.size(); ++value_count) {
-        if (value_count == row_index) {
-            ++row;
-            row_index = A.row_index(row + 1);
+    std::size_t value_count = 0;
+    std::size_t row_index;
+    for (std::size_t row = 0; row < A.nrows(); ++row) {
+        row_index = A.row_index(row + 1);
+        for (; value_count < row_index; ++value_count) {
+            result[row] += A.value(value_count) * b[A.col_index(value_count)];
         }
-        result[row] += A.value(value_count) * b[A.col_index(value_count)];
     }
 }
 
