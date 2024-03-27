@@ -148,9 +148,9 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
 
-    while (!converged && counter < 10) {
+    while (!converged && counter < 1) {
         /*
-        1. step:
+        1st step:
         Start exchange of pk. Communication is only initialized if
         a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
         */
@@ -186,38 +186,58 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         MPI_Wait(&req_recv_left, MPI_STATUS_IGNORE);
         MPI_Wait(&req_recv_right, MPI_STATUS_IGNORE);
 
+        if (rank == 0) {
+            for (double value: p_loc_padded) { std::cout << value << " "; }
+            std::cout << "\n";
+        }
+
         /*
-        2. step:
+        2nd step:
+        Compute A * pk locally.
         */
-        // // 2. compute Apk (locally) --> parallel matvec multiplication
-        // matvec(A_loc, p_loc_padded, Ap_loc);        
+        matvec(A_loc, p_loc_padded, Ap_loc);
 
-        // // 3. compute ak = (rk, rk) / (Apk, pk)
-        // auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        // double App_loc = dot(Ap_loc, p_loc_start);
-        // double App;
-        // MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
-        // alpha = rr / App;
+        /*
+        3rd step:
+        Compute alphak = (rk, rk) / (A * pk, pk).
+        */
+        auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
+        double App_loc = dot(Ap_loc, p_loc_start);
+        double App;
+        MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+        alpha = rr / App;
 
-        // // 4. xk+1 = xk + ak * pk
-        // add_mult_finout(u_loc, p_loc_start, alpha);
+        /*
+        4th step:
+        Compute xk+1 = xk + alphak * pk.
+        */
+        add_mult_finout(u_loc, p_loc_start, alpha);
 
-        // // 5. rk+1 = rk - ak Apk
-        // add_mult_finout(r_loc, Ap_loc, -alpha);
+        /*
+        5th step:
+        Compute rk+1 = rk - alphak * A * pk.
+        */
+        add_mult_finout(r_loc, Ap_loc, -alpha);
 
-        // // 6. gk = (rk+1, rk+1) / (rk, rk)
-        // rr_old = rr;
-        // rr_loc = dot(r_loc, r_loc);
-        // MPI_Allreduce(&rr_loc, &rr, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
-        // gamma = rr / rr_old;
+        /*
+        6th step:
+        Compute gammak = (rk+1, rk+1) / (rk, rk)
+        */
+        rr_old = rr;
+        rr_loc = dot(r_loc, r_loc);
+        MPI_Allreduce(&rr_loc, &rr, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
+        gamma = rr / rr_old;
 
-        // // 7. pk+1 = rk+1 + gk * pk
-        // p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        // add_mult_sinout(r_loc, p_loc_start, gamma);
+        /*
+        7th step:
+        Compute pk+1 = rk+1 + gk * pk.
+        */
+        p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
+        add_mult_sinout(r_loc, p_loc_start, gamma);
 
-        // if (rank == 0) {// && counter % 100 == 0) {
-        //     std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
-        // }
+        if (rank == 0) {// && counter % 100 == 0) {
+            std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
+        }
         ++counter;
         converged = (rr <= tol * tol * bb);
     }
