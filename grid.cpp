@@ -11,7 +11,7 @@ void LocalUnitSquareGrid::info() const {
     std::cout << "LocalUnitSquareGrid with\n\n";
     std::cout << " Local dofs: Nx = " << Nx << ", Ny = " << Ny << "\n";
     std::cout << " Global starting indices: idx = " << idx_glob_start << ", idy = " << idy_glob_start << "\n";
-    std::cout << " Neighbors: up = " << has_upper_neighbor << ", down = " << has_lower_neighbor;
+    std::cout << " Neighbors: up = " << has_top_neighbor << ", down = " << has_bottom_neighbor;
     std::cout << ", left = " << has_left_neighbor << ", right = " << has_right_neighbor;
 
     std::cout << "\n\n";

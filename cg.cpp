@@ -3,14 +3,31 @@
 
 #include <assert.h>
 
-enum Side { up = 0, down = 1, left = 2, right = 3 };
+enum Side { top = 0, bottom = 1, left = 2, right = 3 };
+enum CornerPoints {topleft = 0, topright = 1, bottomright = 2, bottomleft = 3 };
 
-void get_neighbor_ranks(int &up, int &down, int &left, int &right, MPI_Comm comm_cart);
+void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
 void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc, LocalUnitSquareGrid const& local_grid);
 double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded, LocalUnitSquareGrid const& local_grid);
 void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded, double multiplier,
     LocalUnitSquareGrid const& local_grid);
 void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
+void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
@@ -25,7 +42,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
     // get padded local size (including exchange with neighboring processes) 
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_bottom_neighbor + local_grid.has_top_neighbor;
     std::size_t size_loc_padded = Nxt * Nyt;
 
     // in p_loc data with neighboring processes is exchanged, so it must be larger
@@ -47,8 +64,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     std::size_t counter = 0;
 
     // get neighbor ranks
-    int up, down, left, right;
-    get_neighbor_ranks(up, down, left, right, comm_cart);
+    int top, bottom, left, right;
+    get_neighbor_ranks(top, bottom, left, right, comm_cart);
 
     // define "column" type for communication with left/right neighbors
     MPI_Datatype col_type;
@@ -64,27 +81,27 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
         std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
 
-        // up
-        double *sendbuf_up = p_loc_padded.data() + (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
-        double *recvbuf_up = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
-        MPI_Isend(sendbuf_up, local_grid.Nx, MPI_DOUBLE, up, rank, comm_cart, &send_requests[Side::up]);
-        MPI_Irecv(recvbuf_up, local_grid.Nx, MPI_DOUBLE, up, MPI_ANY_TAG, comm_cart, &recv_requests[Side::up]);
+        // top
+        double *sendbuf_top = p_loc_padded.data() + (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
+        double *recvbuf_top = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
+        MPI_Isend(sendbuf_top, local_grid.Nx, MPI_DOUBLE, top, rank, comm_cart, &send_requests[Side::top]);
+        MPI_Irecv(recvbuf_top, local_grid.Nx, MPI_DOUBLE, top, MPI_ANY_TAG, comm_cart, &recv_requests[Side::top]);
 
-        // down
-        double *sendbuf_down = p_loc_padded.data() + Nxt + local_grid.has_left_neighbor;
-        double *recvbuf_down = p_loc_padded.data() + local_grid.has_left_neighbor;
-        MPI_Isend(sendbuf_down, local_grid.Nx, MPI_DOUBLE, down, rank, comm_cart, &send_requests[Side::down]);
-        MPI_Irecv(recvbuf_down, local_grid.Nx, MPI_DOUBLE, down, MPI_ANY_TAG, comm_cart, &recv_requests[Side::down]);
+        // bottom
+        double *sendbuf_bottom = p_loc_padded.data() + Nxt + local_grid.has_left_neighbor;
+        double *recvbuf_bottom = p_loc_padded.data() + local_grid.has_left_neighbor;
+        MPI_Isend(sendbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, rank, comm_cart, &send_requests[Side::bottom]);
+        MPI_Irecv(recvbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, MPI_ANY_TAG, comm_cart, &recv_requests[Side::bottom]);
 
         // left
-        double *sendbuf_left = p_loc_padded.data() + local_grid.has_lower_neighbor * Nxt + 1;
-        double *recvbuf_left = p_loc_padded.data() + local_grid.has_lower_neighbor * Nxt;
+        double *sendbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt + 1;
+        double *recvbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt;
         MPI_Isend(sendbuf_left, 1, col_type, left, rank, comm_cart, &send_requests[Side::left]);
         MPI_Irecv(recvbuf_left, 1, col_type, left, MPI_ANY_TAG, comm_cart, &recv_requests[Side::left]);
 
         // right
-        double *sendbuf_right = p_loc_padded.data() + (1 + local_grid.has_lower_neighbor) * Nxt - 2;
-        double *recvbuf_right = p_loc_padded.data() + (1 + local_grid.has_lower_neighbor) * Nxt - 1;
+        double *sendbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 2;
+        double *recvbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 1;
         MPI_Isend(sendbuf_right, 1, col_type, right, rank, comm_cart, &send_requests[Side::right]);
         MPI_Irecv(recvbuf_right, 1, col_type, right, MPI_ANY_TAG, comm_cart, &recv_requests[Side::right]);
 
@@ -92,10 +109,48 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         2nd step:
         Compute A * pk locally.
         */
-        // first compute matvec for all "inner nodes" that do not require any data exchange
+        // 2.1: matvec for all "inner nodes" that do not require any data exchange
         MPI_Waitall(4, recv_requests.data(), MPI_STATUS_IGNORE);
         std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
         matvec(A_loc, p_loc_padded, Ap_loc);
+
+        // // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes 
+        // int side;
+        // for (int i = 0; i < 4; ++i) {
+        //     MPI_Waitany(4, recv_requests.data(), &side, MPI_STATUS_IGNORE);
+        //     if (side == Side::top) matvec_top_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     else if (side == Side::bottom) matvec_bottom_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     else if (side == Side::left) matvec_left_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     else if (side == Side::right) matvec_right_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        // }
+
+        // // compute matvec for boundary points
+        // bool computation_done[4];
+        // if (!local_grid.has_left_neighbor || !local_grid.has_top_neighbor) {computation_done[CornerPoints::topleft] = true;
+        // if (!local_grid.has_top_neighbor || !local_grid.has_right_neighbor) computation_done[CornerPoints::topright] = true;
+        // if (!local_grid.has_right_neighbor || !local_grid.has_bottom_neighbor) computation_done[CornerPoints::bottomright] = true;
+        // if (!local_grid.has_bottom_neighbor || !local_grid.has_left_neighbor) computation_done[CornerPoints::bottomleft] = true;
+
+        // int recv_done[4] = {false}, receive_done_count;
+        // bool all_computations_done = false;
+        // while (!all_computations_done) {
+        //     MPI_Testsome(4, recv_requests.data(), &receive_done_count, recv_done, MPI_STATUSES_IGNORE);
+        //     if (!computation_done[CornerPoints::topleft] && recv_done[CornerPoints::topleft]) {
+        //         matvec_topleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     };
+        //     if (!computation_done[CornerPoints::topright] && recv_done[CornerPoints::topright]) {
+        //         matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     };
+        //     if (!computation_done[CornerPoints::bottomright] && recv_done[CornerPoints::bottomright]) {
+        //         matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     };
+        //     if (!computation_done[CornerPoints::bottomleft] && recv_done[CornerPoints::bottomleft]) {
+        //         matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+        //     };
+
+        //     // if all receives are done all corner points 
+        //     all_computations_done = (receive_done_count == 4);
+        // }
 
         /*
         3rd step:
@@ -142,15 +197,15 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     }
 }
 
-void get_neighbor_ranks(int &up, int &down, int &left, int &right, MPI_Comm comm_cart) {
+void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
-    std::vector<int> neighbor_ranks(4, -1); // upper / lower / left / right order
+    std::vector<int> neighbor_ranks(4, -1); // top / bottom / left / right order
     MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
     // TODO: is the ordering implementation dependent?
 
-    up = neighbor_ranks[0] >= 0 ? neighbor_ranks[0] : MPI_PROC_NULL;
-    down = neighbor_ranks[1] >= 0 ? neighbor_ranks[1] : MPI_PROC_NULL;
+    top = neighbor_ranks[0] >= 0 ? neighbor_ranks[0] : MPI_PROC_NULL;
+    bottom = neighbor_ranks[1] >= 0 ? neighbor_ranks[1] : MPI_PROC_NULL;
     left = neighbor_ranks[2] >= 0 ? neighbor_ranks[2] : MPI_PROC_NULL;
     right = neighbor_ranks[3] >= 0 ? neighbor_ranks[3] : MPI_PROC_NULL;
 }
@@ -160,7 +215,7 @@ void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& 
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
     for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
         for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
-            int index = (local_grid.has_lower_neighbor + idy) * Nxt + local_grid.has_left_neighbor + idx ;
+            int index = (local_grid.has_bottom_neighbor + idy) * Nxt + local_grid.has_left_neighbor + idx ;
             p_loc[index] = b_loc[idy * local_grid.Nx + idx];
         }
     }
@@ -174,7 +229,7 @@ double dot_padded(std::vector<double> const& not_padded, std::vector<double> con
     std::size_t index;
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            index = Nxt * (row + local_grid.has_bottom_neighbor) + local_grid.has_left_neighbor + col;
             result += padded[index] * not_padded[row * local_grid.Nx + col];
         }
     }
@@ -188,7 +243,7 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
     std::size_t index;
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            index = Nxt * (row + local_grid.has_bottom_neighbor) + local_grid.has_left_neighbor + col;
             inout[row * local_grid.Nx + col] += multiplier * in_padded[index];
         }
     }
@@ -201,8 +256,67 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
     std::size_t index;
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            index = Nxt * (row + local_grid.has_bottom_neighbor) + local_grid.has_left_neighbor + col;
             inout_padded[index] = in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
         }
     }
 }
+
+void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+    if (!local_grid.has_bottom_neighbor) return;
+
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t padded_index, row_index_start, row_index_end, col_index, index_padded;
+    // skip corner points if they require two data exchanges
+    // row refers to the row of the matrix, not to the row in the local grid
+    for (std::size_t row = local_grid.has_left_neighbor; row < local_grid.Nx - local_grid.has_right_neighbor; ++row) {
+        row_index_start = A_loc.row_index(row);
+        row_index_end = A_loc.row_index(row + 1);
+
+        for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
+            col_index = A_loc.col_index(value_count);
+            // compute index in padded vector from column index in matrix
+            index_padded = col_index - Nxt;
+            out[row] += A_loc.value(value_count) * in_padded[index_padded];
+        }
+    }
+}
+
+void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+    if (!local_grid.has_bottom_neighbor) return;
+
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t padded_index, row_index_start, row_index_end, col_index, index_padded;
+    // skip corner points if they require two data exchanges
+    // row refers to the row of the matrix, not to the row in the local grid
+    for (std::size_t row = local_grid.has_left_neighbor; row < local_grid.Nx - local_grid.has_right_neighbor; ++row) {
+        row_index_start = A_loc.row_index(row);
+        row_index_end = A_loc.row_index(row + 1);
+
+        for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
+            col_index = A_loc.col_index(value_count);
+            // compute index in padded vector from column index in matrix
+            index_padded = col_index - Nxt;
+            out[row] += A_loc.value(value_count) * in_padded[index_padded];
+        }
+    }
+}
+
+void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+
+    }
+void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+        
+    }
+void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+
+    }
+void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+
+    }
