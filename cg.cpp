@@ -114,7 +114,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
         matvec(A_loc, p_loc_padded, Ap_loc);
 
-        // // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes 
+        // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes 
         // int side;
         // for (int i = 0; i < 4; ++i) {
         //     MPI_Waitany(4, recv_requests.data(), &side, MPI_STATUS_IGNORE);
@@ -267,7 +267,7 @@ void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in
     if (!local_grid.has_bottom_neighbor) return;
 
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    std::size_t padded_index, row_index_start, row_index_end, col_index, index_padded;
+    std::size_t row_index_start, row_index_end, col_index, index_padded;
     // skip corner points if they require two data exchanges
     // row refers to the row of the matrix, not to the row in the local grid
     for (std::size_t row = local_grid.has_left_neighbor; row < local_grid.Nx - local_grid.has_right_neighbor; ++row) {
@@ -283,15 +283,17 @@ void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in
     }
 }
 
-void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
-    if (!local_grid.has_bottom_neighbor) return;
+    if (!local_grid.has_top_neighbor) return;
 
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    std::size_t padded_index, row_index_start, row_index_end, col_index, index_padded;
+    std::size_t row_index_start, row_index_end, col_index, index_padded;
     // skip corner points if they require two data exchanges
     // row refers to the row of the matrix, not to the row in the local grid
-    for (std::size_t row = local_grid.has_left_neighbor; row < local_grid.Nx - local_grid.has_right_neighbor; ++row) {
+    std::size_t first_row = local_grid.Nx * (local_grid.Ny - 1) + local_grid.has_left_neighbor;
+    std::size_t final_row = local_grid.Nx * local_grid.Ny - 1 - local_grid.has_right_neighbor;
+    for (std::size_t row = first_row; row < final_row; ++row) {
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
 
@@ -302,6 +304,27 @@ void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_p
             out[row] += A_loc.value(value_count) * in_padded[index_padded];
         }
     }
+}
+
+void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+    if (!local_grid.has_left_neighbor) return;
+
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t row_index_start, row_index_end, col_index, index_padded;
+    // skip corner points if they require two data exchanges
+    // row refers to the row of the matrix, not to the row in the local grid
+
+}
+
+void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+    if (!local_grid.has_right_neighbor) return;
+
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t row_index_start, row_index_end, col_index, index_padded;
+    // skip corner points if they require two data exchanges
+    // row refers to the row of the matrix, not to the row in the local grid
 }
 
 void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
