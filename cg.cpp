@@ -266,7 +266,24 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
 
 void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
+    // row refers to the row of the matrix, not to the row in the local grid
+    // the indices refer to the local grid, not the padded data
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t row, row_index_start, row_index_end, col_index, index_padded;
+    for (std::size_t idy = local_grid.has_bottom_neighbor; idy < local_grid.Ny - local_grid.has_top_neighbor; ++idy) {
+        for (std::size_t idx = local_grid.has_left_neighbor; idx < local_grid.Nx - local_grid.has_right_neighbor; ++idx) {
+            row = local_grid.Nx * idy + idx;
+            row_index_start = A_loc.row_index(row);
+            row_index_end = A_loc.row_index(row + 1);
 
+            for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
+                col_index = A_loc.col_index(value_count);
+                // compute index in padded vector from column index in matrix
+                index_padded = col_index - Nxt;
+                out[row] += A_loc.value(value_count) * in_padded[index_padded];
+            }
+        }
+    }
 }
 
 void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
