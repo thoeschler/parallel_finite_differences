@@ -1,5 +1,4 @@
 #include "cg.hpp"
-#include "grid.hpp"
 #include "la.hpp"
 
 

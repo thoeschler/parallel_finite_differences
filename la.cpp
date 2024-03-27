@@ -1,8 +1,6 @@
 #include "la.hpp"
 
-#include <iostream>
 #include <assert.h>
-#include <cmath>
 
 void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result) {
     std::fill(result.begin(), result.end(), 0.0);
