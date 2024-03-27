@@ -55,10 +55,8 @@ void assemble_local_matrix(CRSMatrix &A_loc, std::vector<int> const& dims, std::
     // local matrix size
     bool pad_left = px > 0;
     bool pad_right = px < dims[1] - 1;
-    bool pad_up = py < dims[0] - 1;
     bool pad_down = py > 0;
     std::size_t Nxt = local_grid.Nx + pad_left + pad_right;
-    std::size_t Nyt = local_grid.Ny + pad_up + pad_down;
 
     /*
     The local finite difference matrix will be of size

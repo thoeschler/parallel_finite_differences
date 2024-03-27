@@ -29,7 +29,6 @@ void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& 
 double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& p_loc_padded,
                   LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
 
     double result = 0.0;
     std::size_t index;
@@ -45,7 +44,6 @@ double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& 
 void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded, double multiplier,
                      LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
 
     std::size_t index;
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
@@ -59,7 +57,6 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
 void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
                      LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
 
     std::size_t index;
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
@@ -192,7 +189,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         */
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
-        if (rank == 0) {// && counter % 100 == 0) {
+        if (rank == 0 && counter % 100 == 0) {
             std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
         }
         ++counter;
