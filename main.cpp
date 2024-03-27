@@ -10,8 +10,8 @@
 #include <mpi.h>
 #include <tuple>
 
-#define Nx 100
-#define Ny 100
+#define Nx 300
+#define Ny 400
 
 double bc(double x, double y) {
     return x + y;
@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
     compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
 
     if (rank == root) {
+        std::cout << "\n";
         std::cout << "l1 error:\t" << l1_error << "\n";
         std::cout << "linf error:\t" << linf_error << "\n";
     }
