@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <cmath>
 
-void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &out) {
-    std::fill(out.begin(), out.end(), 0.0);
+void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result) {
+    std::fill(result.begin(), result.end(), 0.0);
     std::size_t row = 0;
     std::size_t row_index = A.row_index(row + 1);
     for (std::size_t value_count = 0; value_count < A.size(); ++value_count) {
@@ -13,7 +13,7 @@ void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> 
             ++row;
             row_index = A.row_index(row + 1);
         }
-        out[row] += A.value(value_count) * b[A.col_index(value_count)];
+        result[row] += A.value(value_count) * b[A.col_index(value_count)];
     }
 }
 
@@ -185,11 +185,6 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         MPI_Wait(&req_recv_up, MPI_STATUS_IGNORE);
         MPI_Wait(&req_recv_left, MPI_STATUS_IGNORE);
         MPI_Wait(&req_recv_right, MPI_STATUS_IGNORE);
-
-        if (rank == 0) {
-            for (double value: p_loc_padded) { std::cout << value << " "; }
-            std::cout << "\n";
-        }
 
         /*
         2nd step:
