@@ -2,70 +2,14 @@
 #include "la.hpp"
 
 
-void get_neighbor_ranks(int &up, int &down, int &left, int &right, MPI_Comm comm_cart) {
-    int rank;
-    MPI_Comm_rank(comm_cart, &rank);
-    std::vector<int> neighbor_ranks(4, -1); // upper / lower / left / right order
-    MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
-    // TODO: is the ordering implementation dependent?
-
-    up = neighbor_ranks[0] >= 0 ? neighbor_ranks[0] : MPI_PROC_NULL;
-    down = neighbor_ranks[1] >= 0 ? neighbor_ranks[1] : MPI_PROC_NULL;
-    left = neighbor_ranks[2] >= 0 ? neighbor_ranks[2] : MPI_PROC_NULL;
-    right = neighbor_ranks[3] >= 0 ? neighbor_ranks[3] : MPI_PROC_NULL;
-}
-
-void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc,
-                         LocalUnitSquareGrid const& local_grid) {
-    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-    for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
-        for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
-            int index = (local_grid.has_lower_neighbor + idy) * Nxt + local_grid.has_left_neighbor + idx ;
-            p_loc[index] = b_loc[idy * local_grid.Nx + idx];
-        }
-    }
-}
-
-double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded,
-                  LocalUnitSquareGrid const& local_grid) {
-    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-
-    double result = 0.0;
-    std::size_t index;
-    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
-        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
-            result += padded[index] * not_padded[row * local_grid.Nx + col];
-        }
-    }
-    return result;
-}
-
+void get_neighbor_ranks(int &up, int &down, int &left, int &right, MPI_Comm comm_cart);
+void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc, LocalUnitSquareGrid const& local_grid);
+double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded, LocalUnitSquareGrid const& local_grid);
 void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded, double multiplier,
-                     LocalUnitSquareGrid const& local_grid) {
-    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-
-    std::size_t index;
-    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
-        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
-            inout[row * local_grid.Nx + col] += multiplier * in_padded[index];
-        }
-    }
-}
-
+                     LocalUnitSquareGrid const& local_grid);
 void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
-                     LocalUnitSquareGrid const& local_grid) {
-    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
-
-    std::size_t index;
-    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
-        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
-            inout_padded[index] = in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
-        }
-    }
-}
+                     LocalUnitSquareGrid const& local_grid);
+void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &result);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
                  LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
@@ -194,5 +138,70 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         }
         ++counter;
         converged = (rr <= tol * tol * bb);
+    }
+}
+
+void get_neighbor_ranks(int &up, int &down, int &left, int &right, MPI_Comm comm_cart) {
+    int rank;
+    MPI_Comm_rank(comm_cart, &rank);
+    std::vector<int> neighbor_ranks(4, -1); // upper / lower / left / right order
+    MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
+    // TODO: is the ordering implementation dependent?
+
+    up = neighbor_ranks[0] >= 0 ? neighbor_ranks[0] : MPI_PROC_NULL;
+    down = neighbor_ranks[1] >= 0 ? neighbor_ranks[1] : MPI_PROC_NULL;
+    left = neighbor_ranks[2] >= 0 ? neighbor_ranks[2] : MPI_PROC_NULL;
+    right = neighbor_ranks[3] >= 0 ? neighbor_ranks[3] : MPI_PROC_NULL;
+}
+
+void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc,
+                         LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
+        for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
+            int index = (local_grid.has_lower_neighbor + idy) * Nxt + local_grid.has_left_neighbor + idx ;
+            p_loc[index] = b_loc[idy * local_grid.Nx + idx];
+        }
+    }
+}
+
+double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded,
+                  LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+
+    double result = 0.0;
+    std::size_t index;
+    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            result += padded[index] * not_padded[row * local_grid.Nx + col];
+        }
+    }
+    return result;
+}
+
+void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded, double multiplier,
+                     LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+
+    std::size_t index;
+    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            inout[row * local_grid.Nx + col] += multiplier * in_padded[index];
+        }
+    }
+}
+
+void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
+                     LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+
+    std::size_t index;
+    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            inout_padded[index] = in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
+        }
     }
 }
