@@ -1,6 +1,6 @@
 #include "grid.hpp"
 #include "crs.hpp"
-#include "la.hpp"
+#include "cg.hpp"
 #include "finite_diff.hpp"
 #include "utils.hpp"
 #include "topology.hpp"
@@ -10,8 +10,8 @@
 #include <mpi.h>
 #include <tuple>
 
-#define Nx 8
-#define Ny 8
+#define Nx 100
+#define Ny 100
 
 double bc(double x, double y) {
     return x + y;
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
 
     // solve system
     std::vector<double> u_loc;
-    const double tol = 1e-12;
+    const double tol = 1e-9;
     parallel_cg(A_loc, b_loc, u_loc, local_grid, comm_cart, tol);
 
     // compute error
