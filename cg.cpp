@@ -14,6 +14,8 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
     LocalUnitSquareGrid const& local_grid);
 void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
     LocalUnitSquareGrid const& local_grid);
+void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid);
 void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid);
 void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
@@ -113,6 +115,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         // 2.1: matvec for all "inner nodes" (those which do not require any data exchange)
         MPI_Waitall(4, recv_requests.data(), MPI_STATUS_IGNORE);
         std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
+        // matvec_inner(A_loc, p_loc_padded, Ap_loc, local_grid);
         matvec(A_loc, p_loc_padded, Ap_loc);
 
         // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes 
@@ -259,6 +262,11 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
             inout_padded[index] = in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
         }
     }
+}
+
+void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, std::vector<double> &out,
+    LocalUnitSquareGrid const& local_grid) {
+
 }
 
 void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
