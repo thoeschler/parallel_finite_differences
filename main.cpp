@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(comm_cart, &cart_rank);
     MPI_Cart_coords(comm_cart, rank, ndims, coords.data());
 
-    // get local dimensions
+    // get local dimensions, create local grid
     std::size_t Nx_loc, Ny_loc, idx_glob_start, idy_glob_start;
     std::tie(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start) = get_local_dimensions(global_grid, dims, coords);
     LocalUnitSquareGrid local_grid(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start, coords, dims);
@@ -55,15 +55,15 @@ int main(int argc, char** argv) {
     const double tol = 1e-12;
     parallel_cg(A_loc, b_loc, u_loc, local_grid, comm_cart, tol);
 
-    // // compute error
-    // double l1_error = 0.0, linf_error = 0.0;
-    // compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
-    // compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+    // compute error
+    double l1_error = 0.0, linf_error = 0.0;
+    compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+    compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
 
-    // if (rank == root) {
-    //     std::cout << "l1 error:\t" << l1_error << "\n";
-    //     std::cout << "linf error:\t" << linf_error << "\n";
-    // }
+    if (rank == root) {
+        std::cout << "l1 error:\t" << l1_error << "\n";
+        std::cout << "linf error:\t" << linf_error << "\n";
+    }
 
     MPI_Finalize();
 
