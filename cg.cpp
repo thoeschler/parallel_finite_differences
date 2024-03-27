@@ -42,6 +42,34 @@ double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& 
     return result;
 }
 
+void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded, double multiplier,
+                     LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
+
+    std::size_t index;
+    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            inout[row * local_grid.Nx + col] += multiplier * in_padded[index];
+        }
+    }
+}
+
+void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
+                     LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
+
+    std::size_t index;
+    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            inout_padded[index] += in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
+        }
+    }
+}
+
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
                  LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol) {
     int rank;
@@ -84,7 +112,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
 
-    while (!converged && counter < 1) {
+    while (!converged && counter < 1000) {
         /*
         1st step:
         Start exchange of pk. Communication is only initialized if
@@ -132,7 +160,6 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         3rd step:
         Compute alphak = (rk, rk) / (A * pk, pk).
         */
-        // auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
         double App_loc = dot_padded(Ap_loc, p_loc_padded, local_grid);
         double App;
         MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
@@ -142,7 +169,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         4th step:
         Compute xk+1 = xk + alphak * pk.
         */
-        // add_mult_finout(u_loc, p_loc_padded, alpha);
+        add_mult_finout_padded(u_loc, p_loc_padded, alpha, local_grid);
 
         /*
         5th step:
@@ -163,8 +190,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         7th step:
         Compute pk+1 = rk+1 + gk * pk.
         */
-        // p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        // add_mult_sinout(r_loc, p_loc_padded, gamma);
+        add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
         if (rank == 0) {// && counter % 100 == 0) {
             std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
