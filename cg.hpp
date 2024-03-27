@@ -7,4 +7,5 @@
 #include <mpi.h>
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
-                 LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol=1e-7);
+                 LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol=1e-7,
+                 bool verbose=false);

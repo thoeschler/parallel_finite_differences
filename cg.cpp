@@ -68,7 +68,7 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
 }
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
-                 LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol) {
+                 LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
 
@@ -189,7 +189,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         */
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
-        if (rank == 0 && counter % 100 == 0) {
+        if (verbose && rank == 0 && counter % 100 == 0) {
             std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
         }
         ++counter;
