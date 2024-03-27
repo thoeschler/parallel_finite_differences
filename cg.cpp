@@ -4,7 +4,6 @@
 #include <assert.h>
 
 enum Side { top = 0, bottom = 1, left = 2, right = 3 };
-enum CornerPoints {topleft = 0, topright = 1, bottomright = 2, bottomleft = 3 };
 
 bool all(std::vector<bool> const&vec);
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
