@@ -95,6 +95,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         2nd step:
         Compute A * pk locally.
         */
+        std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
         matvec(A_loc, p_loc_padded, Ap_loc);
 
         /*

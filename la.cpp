@@ -3,7 +3,6 @@
 #include <assert.h>
 
 void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result) {
-    std::fill(result.begin(), result.end(), 0.0);
     std::size_t row = 0;
     std::size_t row_index = A.row_index(row + 1);
     for (std::size_t value_count = 0; value_count < A.size(); ++value_count) {
