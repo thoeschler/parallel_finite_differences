@@ -26,8 +26,20 @@ void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& 
     }
 }
 
-double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& p_loc_padded) {
+double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& p_loc_padded,
+                  LocalUnitSquareGrid const& local_grid) {
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_lower_neighbor + local_grid.has_upper_neighbor;
 
+    double result = 0.0;
+    std::size_t index;
+    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+            index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
+            result += p_loc_padded[index] * Ap_loc[row * local_grid.Nx + col];
+        }
+    }
+    return result;
 }
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
@@ -121,7 +133,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         Compute alphak = (rk, rk) / (A * pk, pk).
         */
         // auto p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        double App_loc = dot_padded(Ap_loc, p_loc_padded);
+        double App_loc = dot_padded(Ap_loc, p_loc_padded, local_grid);
         double App;
         MPI_Allreduce(&App_loc, &App, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
         alpha = rr / App;
@@ -130,7 +142,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         4th step:
         Compute xk+1 = xk + alphak * pk.
         */
-        add_mult_finout(u_loc, p_loc_padded, alpha);
+        // add_mult_finout(u_loc, p_loc_padded, alpha);
 
         /*
         5th step:
@@ -152,7 +164,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         Compute pk+1 = rk+1 + gk * pk.
         */
         // p_loc_start = p_loc_padded.begin() + local_grid.has_lower_neighbor * Nxt;
-        add_mult_sinout(r_loc, p_loc_padded, gamma);
+        // add_mult_sinout(r_loc, p_loc_padded, gamma);
 
         if (rank == 0) {// && counter % 100 == 0) {
             std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
