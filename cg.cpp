@@ -9,7 +9,6 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
                      LocalUnitSquareGrid const& local_grid);
 void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
                      LocalUnitSquareGrid const& local_grid);
-void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &result);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
                  LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
@@ -132,6 +131,10 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         7th step:
         Compute pk+1 = rk+1 + gk * pk.
         */
+        MPI_Wait(&req_send_down, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_send_up, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_send_left, MPI_STATUS_IGNORE);
+        MPI_Wait(&req_send_right, MPI_STATUS_IGNORE);
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
         if (verbose && rank == 0 && counter % 100 == 0) {
