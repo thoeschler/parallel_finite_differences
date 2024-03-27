@@ -21,6 +21,7 @@ void compute_l1_error(double *error, std::vector<double> const& u_loc, UnitSquar
         }
     }
     MPI_Reduce(&e_loc, error, 1, MPI_DOUBLE, MPI_SUM, root, comm);
+    *error /= (global_grid.Nx - 2) * (global_grid.Ny - 2);
 }
 
 void compute_linf_error(double *error, std::vector<double> const& u_loc, UnitSquareGrid const& global_grid,
