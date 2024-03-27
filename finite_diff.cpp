@@ -60,6 +60,14 @@ void assemble_local_matrix(CRSMatrix &A_loc, std::vector<int> const& dims, std::
     std::size_t Nxt = local_grid.Nx + pad_left + pad_right;
     std::size_t Nyt = local_grid.Ny + pad_up + pad_down;
 
+    /*
+    The local finite difference matrix will be of size
+    (local_grid.Nx * local_grid.Ny) x (Nxt * Nyt), i.e.
+    every row corresponds to a node in the local grid.
+    The number of columns also includes neighboring
+    nodes that must be included in the 5 point stencil. 
+    */
+
     // loop over all local nodes
     const double diagonal_value = 2.0 / hx2 + 2.0 / hy2;
     std::size_t col_self, col_left, col_right, col_down, col_up;
