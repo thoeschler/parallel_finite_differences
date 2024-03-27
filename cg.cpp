@@ -26,7 +26,7 @@ void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& 
     }
 }
 
-double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& p_loc_padded,
+double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded,
                   LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
 
@@ -35,7 +35,7 @@ double dot_padded(std::vector<double> const& Ap_loc, std::vector<double> const& 
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
             index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
-            result += p_loc_padded[index] * Ap_loc[row * local_grid.Nx + col];
+            result += padded[index] * not_padded[row * local_grid.Nx + col];
         }
     }
     return result;
@@ -62,7 +62,7 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
             index = Nxt * (row + local_grid.has_lower_neighbor) + local_grid.has_left_neighbor + col;
-            inout_padded[index] += in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
+            inout_padded[index] = in[local_grid.Nx * row + col] + multiplier * inout_padded[index];
         }
     }
 }
@@ -109,7 +109,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
 
-    while (!converged && counter < 1000) {
+    while (!converged) {
         /*
         1st step:
         Start exchange of pk. Communication is only initialized if
@@ -164,7 +164,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
         /*
         4th step:
-        Compute xk+1 = xk + alphak * pk.
+        Compute uk+1 = uk + alphak * pk.
         */
         add_mult_finout_padded(u_loc, p_loc_padded, alpha, local_grid);
 
