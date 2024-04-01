@@ -19,7 +19,7 @@ void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global
             b_loc[idy_loc * local_grid.Nx] += bc(x_bndry, y_bndry) / hx2;
         }
     }
-    else if (px == dims[1] - 1) { // right side
+    if (px == dims[1] - 1) { // right side
         x_bndry = 1.0;
         for (std::size_t idy_loc = 0; idy_loc < local_grid.Ny; ++idy_loc) {
             y_bndry = (local_grid.idy_glob_start + idy_loc + 1) * hy;
@@ -33,7 +33,7 @@ void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global
             b_loc[idx_loc] += bc(x_bndry, y_bndry) / hy2;
         }
     }
-    else if (py == dims[0] - 1) { // upper side
+    if (py == dims[0] - 1) { // upper side
         y_bndry = 1.0;
         for (std::size_t idx_loc = 0; idx_loc < local_grid.Nx; ++idx_loc) {
             x_bndry = (local_grid.idx_glob_start + idx_loc + 1) * hx;
