@@ -31,6 +31,12 @@ void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const&
     LocalUnitSquareGrid const& local_grid);
 void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid);
+void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+    LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+    MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
+void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+    LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+    MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
     LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
@@ -76,66 +82,14 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
     while (!converged) {
         /*
-        1st step:
-        Start exchange of pk. Communication is only initialized if
-        a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
+        1st and 2nd step. Exchange data from p_loc and compute matvec product locally.
         */
         std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
         std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
-
-        // top
-        double *sendbuf_top = p_loc_padded.data() + (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
-        double *recvbuf_top = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
-        MPI_Isend(sendbuf_top, local_grid.Nx, MPI_DOUBLE, top, rank, comm_cart, &send_requests[Side::top]);
-        MPI_Irecv(recvbuf_top, local_grid.Nx, MPI_DOUBLE, top, MPI_ANY_TAG, comm_cart, &recv_requests[Side::top]);
-
-        // bottom
-        double *sendbuf_bottom = p_loc_padded.data() + Nxt + local_grid.has_left_neighbor;
-        double *recvbuf_bottom = p_loc_padded.data() + local_grid.has_left_neighbor;
-        MPI_Isend(sendbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, rank, comm_cart, &send_requests[Side::bottom]);
-        MPI_Irecv(recvbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, MPI_ANY_TAG, comm_cart, &recv_requests[Side::bottom]);
-
-        // left
-        double *sendbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt + 1;
-        double *recvbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt;
-        MPI_Isend(sendbuf_left, 1, col_type, left, rank, comm_cart, &send_requests[Side::left]);
-        MPI_Irecv(recvbuf_left, 1, col_type, left, MPI_ANY_TAG, comm_cart, &recv_requests[Side::left]);
-
-        // right
-        double *sendbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 2;
-        double *recvbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 1;
-        MPI_Isend(sendbuf_right, 1, col_type, right, rank, comm_cart, &send_requests[Side::right]);
-        MPI_Irecv(recvbuf_right, 1, col_type, right, MPI_ANY_TAG, comm_cart, &recv_requests[Side::right]);
-
-        /*
-        2nd step:
-        Compute A * pk locally.
-        */
-        // 2.1: matvec for all "inner nodes" (those which do not require any data exchange)
-        std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
-        
-        /*
-        // "Blocking" communication
-        MPI_Waitall(4, recv_requests.data(), MPI_STATUSES_IGNORE);
-        matvec(A_loc, p_loc_padded, Ap_loc);
-        */
-        matvec_inner(A_loc, p_loc_padded, Ap_loc, local_grid);
-
-        // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes 
-        int side;
-        for (int i = 0; i < 4; ++i) {
-            MPI_Waitany(4, recv_requests.data(), &side, MPI_STATUS_IGNORE);
-            if (side == Side::top) matvec_top_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
-            else if (side == Side::bottom) matvec_bottom_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
-            else if (side == Side::left) matvec_left_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
-            else if (side == Side::right) matvec_right_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
-        }
-
-        // 2.3: compute matvec for corner points
-        matvec_topleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
-        matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
-        matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
-        matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+        cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
+                top, bottom, left, right);
+        // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
+        //         top, bottom, left, right);
 
         /*
         3rd step:
@@ -396,4 +350,112 @@ void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& 
     for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
         out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
     }
+}
+
+void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+        LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+        MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
+    int rank;
+    MPI_Comm_rank(comm_cart, &rank);
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_bottom_neighbor + local_grid.has_top_neighbor;
+    /*
+    1st step:
+    Start exchange of pk. Communication is only initialized if
+    a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
+    */
+    // top
+    double *sendbuf_top = p_loc_padded.data() + (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
+    double *recvbuf_top = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
+    MPI_Isend(sendbuf_top, local_grid.Nx, MPI_DOUBLE, top, rank, comm_cart, &send_requests[Side::top]);
+    MPI_Irecv(recvbuf_top, local_grid.Nx, MPI_DOUBLE, top, MPI_ANY_TAG, comm_cart, &recv_requests[Side::top]);
+
+    // bottom
+    double *sendbuf_bottom = p_loc_padded.data() + Nxt + local_grid.has_left_neighbor;
+    double *recvbuf_bottom = p_loc_padded.data() + local_grid.has_left_neighbor;
+    MPI_Isend(sendbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, rank, comm_cart, &send_requests[Side::bottom]);
+    MPI_Irecv(recvbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, MPI_ANY_TAG, comm_cart, &recv_requests[Side::bottom]);
+
+    // left
+    double *sendbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt + 1;
+    double *recvbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt;
+    MPI_Isend(sendbuf_left, 1, col_type, left, rank, comm_cart, &send_requests[Side::left]);
+    MPI_Irecv(recvbuf_left, 1, col_type, left, MPI_ANY_TAG, comm_cart, &recv_requests[Side::left]);
+
+    // right
+    double *sendbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 2;
+    double *recvbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 1;
+    MPI_Isend(sendbuf_right, 1, col_type, right, rank, comm_cart, &send_requests[Side::right]);
+    MPI_Irecv(recvbuf_right, 1, col_type, right, MPI_ANY_TAG, comm_cart, &recv_requests[Side::right]);
+
+    /*
+    2nd step:
+    Compute A * pk locally. 
+    */
+    // matvec for all nodes after synchronization
+    std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
+
+    MPI_Waitall(4, recv_requests.data(), MPI_STATUSES_IGNORE);
+    matvec(A_loc, p_loc_padded, Ap_loc);
+}
+
+void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+        LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+        MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
+    int rank;
+    MPI_Comm_rank(comm_cart, &rank);
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_bottom_neighbor + local_grid.has_top_neighbor;
+    /*
+    1st step:
+    Start exchange of pk. Communication is only initialized if
+    a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
+    */
+    // top
+    double *sendbuf_top = p_loc_padded.data() + (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
+    double *recvbuf_top = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
+    MPI_Isend(sendbuf_top, local_grid.Nx, MPI_DOUBLE, top, rank, comm_cart, &send_requests[Side::top]);
+    MPI_Irecv(recvbuf_top, local_grid.Nx, MPI_DOUBLE, top, MPI_ANY_TAG, comm_cart, &recv_requests[Side::top]);
+
+    // bottom
+    double *sendbuf_bottom = p_loc_padded.data() + Nxt + local_grid.has_left_neighbor;
+    double *recvbuf_bottom = p_loc_padded.data() + local_grid.has_left_neighbor;
+    MPI_Isend(sendbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, rank, comm_cart, &send_requests[Side::bottom]);
+    MPI_Irecv(recvbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, MPI_ANY_TAG, comm_cart, &recv_requests[Side::bottom]);
+
+    // left
+    double *sendbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt + 1;
+    double *recvbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt;
+    MPI_Isend(sendbuf_left, 1, col_type, left, rank, comm_cart, &send_requests[Side::left]);
+    MPI_Irecv(recvbuf_left, 1, col_type, left, MPI_ANY_TAG, comm_cart, &recv_requests[Side::left]);
+
+    // right
+    double *sendbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 2;
+    double *recvbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 1;
+    MPI_Isend(sendbuf_right, 1, col_type, right, rank, comm_cart, &send_requests[Side::right]);
+    MPI_Irecv(recvbuf_right, 1, col_type, right, MPI_ANY_TAG, comm_cart, &recv_requests[Side::right]);
+
+    /*
+    2nd step:
+    Compute A * pk locally.
+    */
+    // 2.1: matvec for all "inner nodes" (those which do not require any data exchange)
+    std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
+    matvec_inner(A_loc, p_loc_padded, Ap_loc, local_grid);
+
+    // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes
+    int side;
+    for (int i = 0; i < 4; ++i) {
+        MPI_Waitany(4, recv_requests.data(), &side, MPI_STATUS_IGNORE);
+        if (side == Side::top) matvec_top_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        else if (side == Side::bottom) matvec_bottom_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        else if (side == Side::left) matvec_left_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        else if (side == Side::right) matvec_right_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+    }
+
+    // 2.3: compute matvec for corner points
+    matvec_topleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+    matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+    matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+    matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
 }
