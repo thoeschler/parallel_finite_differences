@@ -200,10 +200,10 @@ void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm c
     MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
     // TODO: is the ordering implementation dependent?
 
-    top = neighbor_ranks[0] >= 0 ? neighbor_ranks[0] : MPI_PROC_NULL;
-    bottom = neighbor_ranks[1] >= 0 ? neighbor_ranks[1] : MPI_PROC_NULL;
-    left = neighbor_ranks[2] >= 0 ? neighbor_ranks[2] : MPI_PROC_NULL;
-    right = neighbor_ranks[3] >= 0 ? neighbor_ranks[3] : MPI_PROC_NULL;
+    top = neighbor_ranks[Side::top] >= 0 ? neighbor_ranks[Side::top] : MPI_PROC_NULL;
+    bottom = neighbor_ranks[Side::bottom] >= 0 ? neighbor_ranks[Side::bottom] : MPI_PROC_NULL;
+    left = neighbor_ranks[Side::left] >= 0 ? neighbor_ranks[Side::left] : MPI_PROC_NULL;
+    right = neighbor_ranks[Side::right] >= 0 ? neighbor_ranks[Side::right] : MPI_PROC_NULL;
 }
 
 void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc,
