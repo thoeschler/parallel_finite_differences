@@ -37,6 +37,9 @@ void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std:
 void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
     LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
     MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
+void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+    LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart,
+    MPI_Datatype &col_type, int top, int bottom, int left, int right);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
     LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
@@ -84,13 +87,21 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         /*
         1st and 2nd step. Exchange data from p_loc and compute matvec product locally.
         */
-        std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
-        std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
-        cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
-                top, bottom, left, right);
+        // only for 1./2. option
+        // std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
+        // std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
+
+        // only for 3. option
+        std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
+
+        // 1. option: blocking
         // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
-
+        // 2. option: point to point
+        // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
+        //         top, bottom, left, right);
+        // 3. option: one sided communication
+        cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, top, bottom, left, right);
         /*
         3rd step:
         Compute alphak = (rk, rk) / (A * pk, pk).
@@ -125,7 +136,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         7th step:
         Compute pk+1 = rk+1 + gk * pk.
         */
-        MPI_Waitall(4, send_requests.data(), MPI_STATUS_IGNORE);
+        // only for 1. and 2. option
+        // MPI_Waitall(4, send_requests.data(), MPI_STATUS_IGNORE);
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
         if (verbose && rank == 0 && counter % 100 == 0) {
@@ -458,4 +470,89 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
     matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
     matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
     matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+}
+
+void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+        LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests,
+        MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
+    int rank;
+    MPI_Comm_rank(comm_cart, &rank);
+    std::size_t Nxt = local_grid.Nx + local_grid.has_left_neighbor + local_grid.has_right_neighbor;
+    std::size_t Nyt = local_grid.Ny + local_grid.has_bottom_neighbor + local_grid.has_top_neighbor;
+
+    MPI_Group world_group;
+    MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+
+    // top
+    MPI_Aint targetdisp_top = (Nyt - 2) * Nxt + local_grid.has_left_neighbor;
+    double *originbuf_top = p_loc_padded.data() + (Nyt - 1) * Nxt + local_grid.has_left_neighbor;
+
+    // bottom
+    MPI_Aint targetdisp_bottom = Nxt + local_grid.has_left_neighbor;
+    double *originbuf_bottom = p_loc_padded.data() + local_grid.has_left_neighbor;
+
+    // left
+    MPI_Aint targetdisp_left = local_grid.has_bottom_neighbor * Nxt + 1;
+    double *originbuf_left = p_loc_padded.data() + local_grid.has_bottom_neighbor * Nxt;
+
+    // right
+    MPI_Aint targetdisp_right = (1 + local_grid.has_bottom_neighbor) * Nxt - 2;
+    double *originbuf_right = p_loc_padded.data() + (1 + local_grid.has_bottom_neighbor) * Nxt - 1;
+
+    /*
+    1st step:
+    Start exchange of pk. Communication is only initialized if
+    a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
+    */
+    MPI_Win window;
+    int disp_unit = sizeof(double);
+    MPI_Aint win_size = p_loc_padded.size() * disp_unit;
+    MPI_Win_create(p_loc_padded.data(), win_size, disp_unit, MPI_INFO_NULL, comm_cart, &window);
+
+    MPI_Group get_group;
+    std::vector<int> group_ranks;
+    if (top != MPI_PROC_NULL) group_ranks.push_back(top);
+    if (bottom != MPI_PROC_NULL) group_ranks.push_back(bottom);
+    if (left != MPI_PROC_NULL) group_ranks.push_back(left);
+    if (right != MPI_PROC_NULL) group_ranks.push_back(right);
+
+    MPI_Group_incl(world_group, group_ranks.size(), group_ranks.data(), &get_group);
+
+    // p_loc_padded is used for both sending and receiving data 
+    MPI_Win_post(get_group, 0, window);
+    MPI_Win_start(get_group, 0, window);
+
+    MPI_Rget(originbuf_top, local_grid.Nx, MPI_DOUBLE, top, targetdisp_bottom, local_grid.Nx, MPI_DOUBLE, window, &get_requests[Side::top]);
+    MPI_Rget(originbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, targetdisp_top, local_grid.Nx, MPI_DOUBLE, window, &get_requests[Side::bottom]);
+    MPI_Rget(originbuf_left, local_grid.Ny, MPI_DOUBLE, left, targetdisp_right, 1, col_type, window, &get_requests[Side::left]);
+    MPI_Rget(originbuf_right, local_grid.Ny, MPI_DOUBLE, right, targetdisp_left, 1, col_type, window, &get_requests[Side::right]);
+
+    /*
+    2nd step:
+    Compute A * pk locally.
+    */
+    // 2.1: matvec for all "inner nodes" (those which do not require any data exchange)
+    std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
+    matvec_inner(A_loc, p_loc_padded, Ap_loc, local_grid);
+
+    // 2.2: matvec for boundary nodes, skipping corner points that have two neighboring processes
+    int side;
+    for (int i = 0; i < 4; ++i) {
+        MPI_Waitany(4, get_requests.data(), &side, MPI_STATUS_IGNORE);
+        if (side == Side::top) matvec_top_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        else if (side == Side::bottom) matvec_bottom_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        else if (side == Side::left) matvec_left_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+        else if (side == Side::right) matvec_right_boundary(A_loc, p_loc_padded, Ap_loc, local_grid);
+    }
+
+    MPI_Win_complete(window);
+    MPI_Win_wait(window);
+
+    // 2.3: compute matvec for corner points
+    matvec_topleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+    matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+    matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+    matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
+
+    MPI_Win_free(&window);
 }
