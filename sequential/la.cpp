@@ -61,31 +61,37 @@ void add_mult_sinout(std::vector<double> const&in, std::vector<double> &inout, d
     }
 }
 
-void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, const double tol) {
+void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, const double tol, bool verbose) {
     bool converged = false;
     double alpha, gamma;
     std::size_t size = b.size();
     std::vector<double> p(size), r(size), Ap(size);
 
-    double norm_b_squared = dot(b, b);
-    double norm_r_old_squared, norm_r_squared;
+    double bb = dot(b, b);
+    double rr, rr_old;
 
     // initialize p (direction) and r (residual)
     matmul(A, u, Ap);
     add_mult(b, Ap, r, -1.0);
     p = r;
-    norm_r_old_squared = dot(r, r);
+    rr_old = dot(r, r);
+
+    std::size_t counter = 0;
 
     while (!converged) {
         matmul(A, p, Ap);
         alpha = dot(r, r) / dot(Ap, p);
         add_mult_finout(u, p, alpha);
         add_mult_finout(r, Ap, -alpha);
-        norm_r_squared = dot(r, r);
-        gamma = norm_r_squared / norm_r_old_squared;
-        norm_r_old_squared = norm_r_squared;
+        rr = dot(r, r);
+        gamma = rr / rr_old;
+        rr_old = rr;
         add_mult_sinout(r, p, gamma);
 
-        converged = (norm_r_squared <= tol * tol * norm_b_squared);
+        converged = (rr <= tol * tol * bb);
+        if (verbose && counter % 100 == 0) {
+            std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
+        }
+        ++counter;
     }
 }
