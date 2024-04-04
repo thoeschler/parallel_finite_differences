@@ -39,8 +39,8 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
     MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
 void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
     LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart, MPI_Datatype &col_type,
-    MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, std::vector<int> const&Nx_neighbors,
-    std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right);
+    MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, MPI_Group const&get_group,
+    std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
     LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
@@ -88,16 +88,34 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Datatype col_type;
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
-    // only for 3. option
+    // only for option 3)
     MPI_Datatype col_type_left, col_type_right;
     MPI_Type_vector(local_grid.Ny, 1, Nx_neighbors[Side::left] + 2, MPI_DOUBLE, &col_type_left);
     MPI_Type_vector(local_grid.Ny, 1, Nx_neighbors[Side::right] + 2, MPI_DOUBLE, &col_type_right);
     MPI_Type_commit(&col_type_left);
     MPI_Type_commit(&col_type_right);
 
+    // only for option 3)
+    MPI_Win window;
+    int disp_unit = sizeof(double);
+    MPI_Aint win_size = p_loc_padded.size() * disp_unit;
+    MPI_Win_create(p_loc_padded.data(), win_size, disp_unit, MPI_INFO_NULL, comm_cart, &window);
+
+    MPI_Group get_group;
+    std::vector<int> group_ranks;
+    if (top != MPI_PROC_NULL) group_ranks.push_back(top);
+    if (bottom != MPI_PROC_NULL) group_ranks.push_back(bottom);
+    if (left != MPI_PROC_NULL) group_ranks.push_back(left);
+    if (right != MPI_PROC_NULL) group_ranks.push_back(right);
+
+    MPI_Group world_group;
+    MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+    MPI_Group_incl(world_group, group_ranks.size(), group_ranks.data(), &get_group);
+
     while (!converged) {
         /*
-        1st and 2nd step. Exchange data from p_loc and compute matvec product locally.
+        1st and 2nd step:
+        Exchange data from p_loc and compute matvec product locally.
         */
         // only for 1./2. option
         std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
@@ -114,7 +132,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         //         top, bottom, left, right);
         // 3. option: one sided communication
         cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
-            Nx_neighbors, Ny_neighbors, top, bottom, left, right);
+            window, get_group, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
 
         /*
         3rd step:
@@ -163,6 +181,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
     MPI_Type_free(&col_type);
     // only for 3. option
+    MPI_Win_free(&window);
     MPI_Type_free(&col_type_left);
     MPI_Type_free(&col_type_right);
 }
@@ -277,15 +296,12 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
 
 void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
         LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart,
-        MPI_Datatype &col_type, MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, 
+        MPI_Datatype &col_type, MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, MPI_Group const&get_group,
         std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
     std::size_t Nxt = local_grid.Nx + 2;
     std::size_t Nyt = local_grid.Ny + 2;
-
-    MPI_Group world_group;
-    MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
     // top
     MPI_Aint targetdisp_top = Nxt + 1;
@@ -308,20 +324,6 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     Start exchange of pk. Communication is only initialized if
     a valid rank is specified, i.e. if dest/source != MPI_PROC_NULL.
     */
-    MPI_Win window;
-    int disp_unit = sizeof(double);
-    MPI_Aint win_size = p_loc_padded.size() * disp_unit;
-    MPI_Win_create(p_loc_padded.data(), win_size, disp_unit, MPI_INFO_NULL, comm_cart, &window);
-
-    MPI_Group get_group;
-    std::vector<int> group_ranks;
-    if (top != MPI_PROC_NULL) group_ranks.push_back(top);
-    if (bottom != MPI_PROC_NULL) group_ranks.push_back(bottom);
-    if (left != MPI_PROC_NULL) group_ranks.push_back(left);
-    if (right != MPI_PROC_NULL) group_ranks.push_back(right);
-
-    MPI_Group_incl(world_group, group_ranks.size(), group_ranks.data(), &get_group);
-
     // p_loc_padded is used for both sending and receiving data 
     MPI_Win_post(get_group, 0, window);
     MPI_Win_start(get_group, 0, window);
@@ -357,8 +359,6 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
     matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
     matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
-
-    MPI_Win_free(&window);
 }
 
 bool all(std::vector<bool> const&vec) {
