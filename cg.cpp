@@ -39,7 +39,8 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
     MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
 void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
     LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart, MPI_Datatype &col_type,
-    std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right);
+    MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, std::vector<int> const&Nx_neighbors,
+    std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right);
 
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
     LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
@@ -87,6 +88,12 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Datatype col_type;
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
+    // only for 3. option
+    MPI_Datatype col_type_left, col_type_right;
+    MPI_Type_vector(local_grid.Ny, 1, Nx_neighbors[Side::left] + 2, MPI_DOUBLE, &col_type_left);
+    MPI_Type_vector(local_grid.Ny, 1, Nx_neighbors[Side::right] + 2, MPI_DOUBLE, &col_type_right);
+    MPI_Type_commit(&col_type_left);
+    MPI_Type_commit(&col_type_right);
 
     while (!converged) {
         /*
@@ -106,7 +113,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
         // 3. option: one sided communication
-        cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
+        cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
+            Nx_neighbors, Ny_neighbors, top, bottom, left, right);
 
         /*
         3rd step:
@@ -154,6 +162,9 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     }
 
     MPI_Type_free(&col_type);
+    // only for 3. option
+    MPI_Type_free(&col_type_left);
+    MPI_Type_free(&col_type_right);
 }
 
 bool all(std::vector<bool> const&vec) {
@@ -491,8 +502,8 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
 
 void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
         LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart,
-        MPI_Datatype &col_type, std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors,
-        int top, int bottom, int left, int right) {
+        MPI_Datatype &col_type, MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, 
+        std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
     std::size_t Nxt = local_grid.Nx + 2;
@@ -542,8 +553,8 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
 
     MPI_Rget(originbuf_top, local_grid.Nx, MPI_DOUBLE, top, targetdisp_top, local_grid.Nx, MPI_DOUBLE, window, &get_requests[Side::top]);
     MPI_Rget(originbuf_bottom, local_grid.Nx, MPI_DOUBLE, bottom, targetdisp_bottom, local_grid.Nx, MPI_DOUBLE, window, &get_requests[Side::bottom]);
-    MPI_Rget(originbuf_left, 1, col_type, left, targetdisp_left, 1, col_type, window, &get_requests[Side::left]);
-    MPI_Rget(originbuf_right, 1, col_type, right, targetdisp_right, 1, col_type, window, &get_requests[Side::right]);
+    MPI_Rget(originbuf_left, 1, col_type, left, targetdisp_left, 1, col_type_left, window, &get_requests[Side::left]);
+    MPI_Rget(originbuf_right, 1, col_type, right, targetdisp_right, 1, col_type_right, window, &get_requests[Side::right]);
 
     /*
     2nd step:
