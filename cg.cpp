@@ -42,6 +42,17 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, std::vector<int> const&Nx_neighbors,
     std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right);
 
+/**
+ * @brief Parallel Conjugate Gradient (CG) Method.
+ * 
+ * @param A_loc Local matrix.
+ * @param b_loc Local right hand side.
+ * @param u_loc Solution vector.
+ * @param local_grid Local UnitSqaureGrid holding grid and neighbor information.
+ * @param comm_cart MPI communicator
+ * @param tol Error tolerance.
+ * @param verbose Print status of CG iteration.
+ */
 void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
     LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
     int rank;
