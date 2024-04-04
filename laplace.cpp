@@ -10,15 +10,14 @@
 #include <mpi.h>
 #include <tuple>
 
-#define Nx 300
-#define Ny 400
-
 double bc(double x, double y) {
     return x + y;
 }
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
+    std::size_t Nx = atoi(argv[1]);
+    std::size_t Ny = atoi(argv[2]);
     int rank, size, root = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
