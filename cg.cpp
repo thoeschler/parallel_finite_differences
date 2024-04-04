@@ -45,6 +45,14 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
 /**
  * @brief Parallel Conjugate Gradient (CG) Method.
  * 
+ * Different ways of communication are possible, namely:
+ * 1) "Blocking" communication (Matrix vector product is computed only once the communication is done).
+ * 2) Nonblocking point to point communication using Isend/Irecv.
+ * 3) Onesided communication.
+ * 
+ * For options 2) and 3) the part of the matrix vector product which does not require any communication
+ * is computed during data exchange.
+ * 
  * @param A_loc Local matrix.
  * @param b_loc Local right hand side.
  * @param u_loc Solution vector.
@@ -63,16 +71,24 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     u_loc.resize(size_loc);
     std::vector<double> r_loc(size_loc), Ap_loc(size_loc);
 
-    // get padded local size (including exchange with neighboring processes) 
+    /*
+    Padded local size (to include exchange with neighboring processes).
+    Padding is applied in every direction no matter if a neighboring
+    process exists or not to make indexing simpler.
+    */
     std::size_t Nxt = local_grid.Nx + 2;
     std::size_t Nyt = local_grid.Ny + 2;
     std::size_t size_loc_padded = Nxt * Nyt;
 
-    // in p_loc data with neighboring processes is exchanged, so it must be larger
+    /*
+    In p_loc_padded data with neighboring processes is exchanged,
+    so it is allocated using the padded size.
+    */
     std::vector<double> p_loc_padded(size_loc_padded);
 
-    // 0. compute p = r = b - Ax0, initial guess is always x0=0 here
+    // 0th step. Compute p = r = b - Ax0, initial guess is always x0=0 here.
     r_loc = b_loc;
+    // copy data from non-padded (b_loc) to padded vector (p_loc_padded)
     copy_b_loc_to_p_loc(p_loc_padded, b_loc, local_grid);
 
     double rr_loc = dot(r_loc, r_loc);
@@ -90,7 +106,11 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     int top, bottom, left, right;
     get_neighbor_ranks(top, bottom, left, right, comm_cart);
 
-    // only for 3. option
+    /*
+    Only for option 3).
+    The neighboring local grid sizes must be known for
+    onesided communication.
+    */
     std::vector<int> Nx_neighbors(4), Ny_neighbors(4);
     MPI_Neighbor_allgather(&local_grid.Nx, 1, MPI_INT, Nx_neighbors.data(), 1, MPI_INT, comm_cart);
     MPI_Neighbor_allgather(&local_grid.Ny, 1, MPI_INT, Ny_neighbors.data(), 1, MPI_INT, comm_cart);
@@ -99,7 +119,12 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Datatype col_type;
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
-    // only for 3. option
+
+    /*
+    Only for option 3).
+    The local grid size of left and right neighbors may be different,
+    so separate data types are needed here.
+    */
     MPI_Datatype col_type_left, col_type_right;
     MPI_Type_vector(local_grid.Ny, 1, Nx_neighbors[Side::left] + 2, MPI_DOUBLE, &col_type_left);
     MPI_Type_vector(local_grid.Ny, 1, Nx_neighbors[Side::right] + 2, MPI_DOUBLE, &col_type_right);
@@ -108,22 +133,22 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
 
     while (!converged) {
         /*
-        1st and 2nd step. Exchange data from p_loc and compute matvec product locally.
+        1st and 2nd step. Exchange data in p_loc_padded and compute matrix vector product locally.
         */
-        // only for 1./2. option
+        // only for options 1) and 2)
         std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
         std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
 
-        // only for 3. option
+        // only for option 3)
         std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
 
-        // 1. option: blocking
+        // 1) "Blocking" communication
         // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
-        // 2. option: point to point
+        // 2) Point to point communication
         // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
-        // 3. option: one sided communication
+        // 3) Onesided communication
         cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
             Nx_neighbors, Ny_neighbors, top, bottom, left, right);
 
@@ -161,10 +186,11 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         7th step:
         Compute pk+1 = rk+1 + gk * pk.
         */
-        // only for 1. and 2. option
+        // only for options 1) and 2)
         // MPI_Waitall(4, send_requests.data(), MPI_STATUS_IGNORE);
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
+        // info
         if (verbose && rank == 0 && counter % 100 == 0) {
             std::cout << "it " << counter << ": rr / bb = " << std::sqrt(rr / bb) << "\n";
         }
@@ -173,7 +199,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     }
 
     MPI_Type_free(&col_type);
-    // only for 3. option
+    // only for option 3)
     MPI_Type_free(&col_type_left);
     MPI_Type_free(&col_type_right);
 }
