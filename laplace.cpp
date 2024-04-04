@@ -10,8 +10,8 @@
 #include <mpi.h>
 #include <tuple>
 
-#define Nx 300
-#define Ny 400
+#define Nx 1000
+#define Ny 1000
 
 double bc(double x, double y) {
     return x + y;
