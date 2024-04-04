@@ -48,8 +48,8 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
  * @param A_loc Local matrix.
  * @param b_loc Local right hand side.
  * @param u_loc Solution vector.
- * @param local_grid Local UnitSqaureGrid holding grid and neighbor information.
- * @param comm_cart MPI communicator
+ * @param local_grid Local UnitSquareGrid holding grid and neighbor information.
+ * @param comm_cart MPI communicator.
  * @param tol Error tolerance.
  * @param verbose Print status of CG iteration.
  */
