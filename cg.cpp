@@ -112,6 +112,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Group_incl(world_group, group_ranks.size(), group_ranks.data(), &get_group);
 
+    double start = MPI_Wtime();
     while (!converged) {
         /*
         1st and 2nd step:
@@ -125,14 +126,14 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
 
         // 1. option: blocking
-        // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
-        //         top, bottom, left, right);
+        cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
+                top, bottom, left, right);
         // 2. option: point to point
         // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
         // 3. option: one sided communication
-        cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
-            window, get_group, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
+        // cg_matvec_one_t_grsided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
+        //     window, geoup, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
 
         /*
         3rd step:
@@ -178,6 +179,9 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         ++counter;
         converged = (rr <= tol * tol * bb);
     }
+    double end = MPI_Wtime();
+    double avg_time = counter == 0 ? 0.0: (end - start) / counter;
+    if (rank == 0) std::cout << "average time / it: " << avg_time << "s\n";
 
     MPI_Type_free(&col_type);
     // only for 3. option
