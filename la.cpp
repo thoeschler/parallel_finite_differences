@@ -6,7 +6,7 @@ void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> 
     std::size_t row_start;
     std::size_t row_end;
 
-    #pragma omp parallel for private(row_index, value_count)
+    #pragma omp parallel for private(row_start, row_end)
     for (std::size_t row = 0; row < A.nrows(); ++row) {
         row_start = A.row_index(row);
         row_end = A.row_index(row + 1);
