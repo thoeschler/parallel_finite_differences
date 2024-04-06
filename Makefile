@@ -1,8 +1,9 @@
 CXX=mpicxx
 CXXFLAGS=-Wall -O3 -march=native
+LIBS=#-fopenmp
 
 build: laplace.o la.o crs.o finite_diff.o topology.o grid.o cg.o
-	$(CXX) $(CXXFLAGS) topology.o grid.o finite_diff.o la.o cg.o crs.o laplace.o -o laplace.out
+	$(CXX) $(CXXFLAGS) topology.o grid.o finite_diff.o la.o cg.o crs.o laplace.o -o laplace.out $(LIBS)
 
 run:
 	np=$1
@@ -14,4 +15,4 @@ clean:
 	rm *.o *.out
 
 .cpp.o:
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -o $@ -c $< $(LIBS)
