@@ -155,16 +155,16 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         Exchange data from p_loc and compute matvec product locally.
         */
         // only for options 1) and 2)
-        std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
-        std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
+        // std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
+        // std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
 
         // only for option 3)
         std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
 
-        // 1) "Blocking" communication
+        // // 1) "Blocking" communication
         // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
-        // 2) Point to point communication
+        // // 2) Point to point communication
         // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
         // 3) Onesided communication
@@ -424,17 +424,32 @@ void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm c
     right = neighbor_ranks[Side::right] >= 0 ? neighbor_ranks[Side::right] : MPI_PROC_NULL;
 }
 
-void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc,
+/**
+ * @brief Copy data from padded vecor p_loc_padded to non-padded vector b_loc.
+ * 
+ * @param p_loc_padded Padded vector.
+ * @param b_loc Non-padded vector.
+ * @param local_grid Local UnitSquareGrid.
+ */
+void copy_b_loc_to_p_loc(std::vector<double> &p_loc_padded, std::vector<double> const& b_loc,
     LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
     for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
         for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
             int index = (idy + 1) * Nxt + idx + 1;
-            p_loc[index] = b_loc[idy * local_grid.Nx + idx];
+            p_loc_padded[index] = b_loc[idy * local_grid.Nx + idx];
         }
     }
 }
 
+/**
+ * @brief Dot product between non-padded and padded vector.
+ * 
+ * @param not_padded Non-padded vector.
+ * @param padded Padded vector.
+ * @param local_grid Local UnitSquareGrid.
+ * @return double 
+ */
 double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded,
     LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
@@ -450,6 +465,16 @@ double dot_padded(std::vector<double> const& not_padded, std::vector<double> con
     return result;
 }
 
+/**
+ * @brief Combined addition and multiplication between non-padded and padded vector.
+ * 
+ * This routine overwrites the first input vector.
+ * 
+ * @param inout Non-padded vector.
+ * @param in_padded Padded vector.
+ * @param multiplier Multiplier.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded,
     double multiplier, LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
@@ -463,6 +488,16 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
     }
 }
 
+/**
+ * @brief Combined addition and multiplication between non-padded and padded vector.
+ * 
+ * This routine overwrites the second input vector.
+ * 
+ * @param inout Non-padded vector.
+ * @param in_padded Padded vector.
+ * @param multiplier Multiplier.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
     LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
@@ -476,6 +511,14 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
     }
 }
 
+/**
+ * @brief Matrix vector product for "inner" grid points.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // row refers to the row of the matrix, not to the row in the local grid
@@ -494,6 +537,14 @@ void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, st
     }
 }
 
+/**
+ * @brief Matrix vector product for bottom boundary grid points.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // if there is no bottom neighbor the bottom part is part of the "inner" nodes
@@ -512,6 +563,14 @@ void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in
     }
 }
 
+/**
+ * @brief Matrix vector product for top boundary grid points.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
         // if there is no top neighbor the top part is part of the "inner" nodes
@@ -532,6 +591,14 @@ void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_pa
     }
 }
 
+/**
+ * @brief Matrix vector product for left boundary grid points.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // if there is no left neighbor the left part is part of the "inner" nodes
@@ -551,6 +618,14 @@ void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_p
     }
 }
 
+/**
+ * @brief Matrix vector product for right boundary grid points.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // if there is no right neighbor the right part is part of the "inner" nodes
@@ -570,6 +645,14 @@ void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_
     }
 }
 
+/**
+ * @brief Matrix vector product for top left corner grid point.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // if no left or top neighbor exist, the "corner" point has already been accounted for
@@ -584,6 +667,14 @@ void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_
     }
 }
 
+/**
+ * @brief Matrix vector product for top right corner grid point.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // if no top or right neighbor exist, the "corner" point has already been accounted for
@@ -598,6 +689,14 @@ void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in
     }
 }
 
+/**
+ * @brief Matrix vector product for bottom right corner grid point.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     if (!local_grid.has_right_neighbor || !local_grid.has_bottom_neighbor) return;
@@ -613,6 +712,14 @@ void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const&
 
 }
 
+/**
+ * @brief Matrix vector product for bottom left corner grid point.
+ * 
+ * @param A_loc Local Finite Difference Matrix.
+ * @param in_padded Padded vector.
+ * @param out Result.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
     LocalUnitSquareGrid const& local_grid) {
     // if no bottom or left neighbor exist, the "corner" point has already been accounted for
