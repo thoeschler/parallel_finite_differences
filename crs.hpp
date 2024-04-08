@@ -3,7 +3,7 @@
 #include <iostream>
 
 class CRSMatrix {
-    protected:
+    private:
         std::vector<double> _values; // nonzero values
         std::vector<std::size_t> _col_indices; // column indices
         std::vector<std::size_t> _row_indices = {0}; // row information
