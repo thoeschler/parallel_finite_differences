@@ -8,12 +8,12 @@
  * is that the local vector is needed in the CG algorithm
  * to compute the initial residual.
  * 
- * @param b_loc 
- * @param global_grid 
- * @param local_grid 
- * @param coords 
- * @param dims 
- * @param bc 
+ * @param b_loc Local right hand side vector.
+ * @param global_grid Global UnitSquareGrid.
+ * @param local_grid Local UnitSqaureGrid.
+ * @param coords Process coordinates in virtual topology.
+ * @param dims Dimensions of virtual cartesian topology.
+ * @param bc Function to compute the Dirichlet boundary condition.
  */
 void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global_grid,
                         LocalUnitSquareGrid const& local_grid, std::vector<int> const& coords,
