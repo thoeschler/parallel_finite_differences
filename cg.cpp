@@ -162,10 +162,11 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         // ** only for option 3) **
         std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
 
-        // // 1) "Blocking" communication
+        // ** uncomment the desired form of communication here **
+        // 1) "Blocking" communication
         // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
-        // // 2) Point to point communication
+        // 2) Point to point communication
         // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
         //         top, bottom, left, right);
         // 3) Onesided communication
