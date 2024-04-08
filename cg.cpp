@@ -5,7 +5,6 @@
 
 enum Side { top = 0, bottom = 1, left = 2, right = 3 };
 
-bool all(std::vector<bool> const&vec);
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
 void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc, LocalUnitSquareGrid const& local_grid);
 double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded, LocalUnitSquareGrid const& local_grid);
@@ -400,15 +399,6 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     matvec_topright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
     matvec_bottomright_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
     matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
-}
-
-bool all(std::vector<bool> const&vec) {
-    for (bool value: vec) {
-        if (!value) {
-            return false;
-        }
-    }
-    return true;
 }
 
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart) {
