@@ -446,10 +446,14 @@ double dot_padded(std::vector<double> const& not_padded, std::vector<double> con
 
     double result = 0.0;
     std::size_t index;
-    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
-        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + 1) + col + 1;
-            result += padded[index] * not_padded[row * local_grid.Nx + col];
+    #pragma omp parallel shared(a, b) private(index)
+    {
+    #pragma omp for reduction(+:result)
+        for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+            for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+                index = Nxt * (row + 1) + col + 1;
+                result += padded[index] * not_padded[row * local_grid.Nx + col];
+            }
         }
     }
     return result;
