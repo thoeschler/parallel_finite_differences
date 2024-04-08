@@ -1,10 +1,24 @@
 #include "finite_diff.hpp"
 #include "grid.hpp"
 
+/**
+ * @brief Assemble local right hand side vector.
+ * 
+ * The reason why the right hand side is assembled locally
+ * is that the local vector is needed in the CG algorithm
+ * to compute the initial residual.
+ * 
+ * @param b_loc 
+ * @param global_grid 
+ * @param local_grid 
+ * @param coords 
+ * @param dims 
+ * @param bc 
+ */
 void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global_grid,
                         LocalUnitSquareGrid const& local_grid, std::vector<int> const& coords,
                         std::vector<int> const& dims, std::function<double(double, double)> bc) {
-    b_loc.resize(local_grid.Nx * local_grid.Ny); // TODO: not every process needs this? for most just zeros
+    b_loc.resize(local_grid.Nx * local_grid.Ny);
     const double hx = 1.0 / (global_grid.Nx - 1);
     const double hy = 1.0 / (global_grid.Ny - 1);
     const double hx2 = hx * hx;
