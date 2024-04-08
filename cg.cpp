@@ -5,7 +5,6 @@
 
 enum Side { top = 0, bottom = 1, left = 2, right = 3 };
 
-bool all(std::vector<bool> const&vec);
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
 void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc, LocalUnitSquareGrid const& local_grid);
 double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded, LocalUnitSquareGrid const& local_grid);
@@ -402,15 +401,6 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
 }
 
-bool all(std::vector<bool> const&vec) {
-    for (bool value: vec) {
-        if (!value) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
@@ -456,10 +446,14 @@ double dot_padded(std::vector<double> const& not_padded, std::vector<double> con
 
     double result = 0.0;
     std::size_t index;
-    for (std::size_t row = 0; row < local_grid.Ny; ++row) {
-        for (std::size_t col = 0; col < local_grid.Nx; ++col) {
-            index = Nxt * (row + 1) + col + 1;
-            result += padded[index] * not_padded[row * local_grid.Nx + col];
+    #pragma omp parallel shared(not_padded, padded) private(index)
+    {
+    #pragma omp for reduction(+:result)
+        for (std::size_t row = 0; row < local_grid.Ny; ++row) {
+            for (std::size_t col = 0; col < local_grid.Nx; ++col) {
+                index = Nxt * (row + 1) + col + 1;
+                result += padded[index] * not_padded[row * local_grid.Nx + col];
+            }
         }
     }
     return result;
@@ -524,6 +518,7 @@ void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, st
     // row refers to the row of the matrix, not to the row in the local grid
     // the indices refer to the local grid, not the padded data
     std::size_t row, row_index_start, row_index_end;
+    #pragma omp parallel for shared(out) private(row, row_index_start, row_index_end)
     for (std::size_t idy = local_grid.has_bottom_neighbor; idy < local_grid.Ny - local_grid.has_top_neighbor; ++idy) {
         for (std::size_t idx = local_grid.has_left_neighbor; idx < local_grid.Nx - local_grid.has_right_neighbor; ++idx) {
             row = local_grid.Nx * idy + idx; // row in the matrix
@@ -553,6 +548,7 @@ void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in
     std::size_t row_index_start, row_index_end;
     // skip corner points if they require two data exchanges
     // row refers to the row of the matrix, not to the row in the local grid
+    #pragma omp parallel for private(row_index_start, row_index_end)
     for (std::size_t row = local_grid.has_left_neighbor; row < local_grid.Nx - local_grid.has_right_neighbor; ++row) {
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
@@ -581,6 +577,7 @@ void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_pa
     // row refers to the row of the matrix, not to the row in the local grid
     std::size_t first_row = local_grid.Nx * (local_grid.Ny - 1) + local_grid.has_left_neighbor;
     std::size_t final_row = local_grid.Nx * local_grid.Ny - local_grid.has_right_neighbor;
+    #pragma omp parallel for private(row_index_start, row_index_end)
     for (std::size_t row = first_row; row < final_row; ++row) {
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
@@ -607,6 +604,7 @@ void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_p
     std::size_t row, row_index_start, row_index_end;
     // skip corner points if they require two data exchanges
     // row refers to the row of the matrix, not to the row in the local grid
+    #pragma omp parallel for private(row, row_index_start, row_index_end)
     for (std::size_t idy = local_grid.has_bottom_neighbor; idy < local_grid.Ny - local_grid.has_top_neighbor; ++idy) {
         row = local_grid.Nx * idy;
         row_index_start = A_loc.row_index(row);
@@ -634,6 +632,7 @@ void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_
     std::size_t row, row_index_start, row_index_end;
     // skip corner points if they require two data exchanges
     // row refers to the row of the matrix, not to the row in the local grid
+    #pragma omp parallel for private(row, row_index_start, row_index_end)
     for (std::size_t idy = local_grid.has_bottom_neighbor; idy < local_grid.Ny - local_grid.has_top_neighbor; ++idy) {
         row = local_grid.Nx * (idy + 1) - 1;
         row_index_start = A_loc.row_index(row);
