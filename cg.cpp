@@ -108,7 +108,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     get_neighbor_ranks(top, bottom, left, right, comm_cart);
 
     /*
-    Only for option 3).
+    ** only for option 3) **
     The neighboring local grid sizes must be known for
     onesided communication.
     */
@@ -122,7 +122,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Type_commit(&col_type);
     
     /*
-    Only for option 3).
+    ** only for option 3) **
     The local grid size of left and right neighbors may be different,
     so separate data types are needed here.
     */
@@ -132,7 +132,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Type_commit(&col_type_left);
     MPI_Type_commit(&col_type_right);
 
-    // only for option 3)
+    // ** only for option 3) **
     MPI_Win window;
     int disp_unit = sizeof(double);
     MPI_Aint win_size = p_loc_padded.size() * disp_unit;
@@ -155,11 +155,11 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         1st and 2nd step:
         Exchange data from p_loc and compute matvec product locally.
         */
-        // only for options 1) and 2)
+        // ** only for options 1) and 2) **
         // std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
         // std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
 
-        // only for option 3)
+        // ** only for option 3) **
         std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
 
         // // 1) "Blocking" communication
@@ -206,8 +206,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         7th step:
         Compute pk+1 = rk+1 + gk * pk.
         */
-        // only for options 1) and 2)
-        // MPI_Waitall(4, send_requests.data(), MPI_STATUS_IGNORE);
+        // ** only for options 1) and 2) **
+        // MPI_Waitall(4, send_requests.data(), MPI_STATUSES_IGNORE);
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
         // info
@@ -222,12 +222,30 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     if (rank == 0) std::cout << "average time / it: " << avg_time << "s\n";
 
     MPI_Type_free(&col_type);
-    // only for option 3)
+    // ** only for option 3) **
     MPI_Win_free(&window);
     MPI_Type_free(&col_type_left);
     MPI_Type_free(&col_type_right);
 }
 
+/**
+ * @brief Matrix vector product with "blocking" communication.
+ * 
+ * After completion of this function all receive operations have finished.
+ * 
+ * @param A_loc Local finite difference matrix.
+ * @param Ap_loc Local matrix vector product A * p [out].
+ * @param p_loc_padded Padded local conjugate vector p.
+ * @param local_grid Local UnitSquareGrid.
+ * @param send_requests Send requests.
+ * @param recv_requests Receive requests.
+ * @param comm_cart Communicator for cartesian topology.
+ * @param col_type Data type for column data.
+ * @param top Top neighbor.
+ * @param bottom Bottom neighbor.
+ * @param left Left neighbor.
+ * @param right Right neighbor.
+ */
 void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
         LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
         MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
@@ -275,6 +293,22 @@ void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std:
     matvec(A_loc, p_loc_padded, Ap_loc);
 }
 
+/**
+ * @brief Matrix vector product with nonblocking point to point communication.
+ * 
+ * @param A_loc Local finite difference matrix.
+ * @param Ap_loc Local matrix vector product A * p [out].
+ * @param p_loc_padded Padded local conjugate vector p.
+ * @param local_grid Local UnitSquareGrid.
+ * @param send_requests Send requests.
+ * @param recv_requests Receive requests.
+ * @param comm_cart Communicator for cartesian topology.
+ * @param col_type Data type for column data.
+ * @param top Top neighbor.
+ * @param bottom Bottom neighbor.
+ * @param left Left neighbor.
+ * @param right Right neighbor.
+ */
 void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
         LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
         MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
@@ -336,6 +370,27 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
     matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
 }
 
+/**
+ * @brief Parallel matrix vector product with onesided communication.
+ * 
+ * @param A_loc Local finite difference matrix.
+ * @param Ap_loc Local matrix vector product A * p [out].
+ * @param p_loc_padded Padded local conjugate vector p.
+ * @param local_grid Local UnitSquareGrid.
+ * @param get_requests Requests for the "MPI_Rget"-operations.
+ * @param comm_cart Communicator for cartesian topology.
+ * @param col_type Data type for column data.
+ * @param col_type_left Data type for column data for exchange with left neighbor.
+ * @param col_type_right Data type for column data for exchange with right neighbor.
+ * @param window Window for onesided communication.
+ * @param get_group The group of processes to communicate with.
+ * @param Nx_neighbors Number of local grid points in x-direction of neighbors.
+ * @param Ny_neighbors Number of local grid points in y-direction of neighbors.
+ * @param top Top neighbor.
+ * @param bottom Bottom neighbor.
+ * @param left Left neighbor.
+ * @param right Right neighbor.
+ */
 void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
         LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart,
         MPI_Datatype &col_type, MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, MPI_Group const&get_group,
