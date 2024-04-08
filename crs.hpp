@@ -6,7 +6,7 @@ class CRSMatrix {
     private:
         std::vector<double> _values; // nonzero values
         std::vector<std::size_t> _col_indices; // column indices
-        std::vector<std::size_t> _row_indices = {0}; // row information
+        std::vector<std::size_t> _row_indices = {0}; // row indices
     public:
         CRSMatrix() {};
         CRSMatrix(std::size_t num_values, std::size_t num_rows);
