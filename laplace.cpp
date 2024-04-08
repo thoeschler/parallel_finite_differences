@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     // initialize cartesian topology
     const int ndims = 2;
     std::vector<int> dims(ndims), periods(ndims, 0), coords(ndims);
-    initialize_cartesian_topology_dimensions(ndims, dims, global_grid);
+    initialize_cartesian_topology_dimensions(dims, global_grid);
     MPI_Comm comm_cart;
     MPI_Cart_create(MPI_COMM_WORLD, ndims, dims.data(), periods.data(), 1, &comm_cart);
 
