@@ -42,6 +42,15 @@ void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global
     }
 }
 
+/**
+ * @brief Assemble local system matrix, i.e. only assemble rows corresponsing to local grid points.
+ * 
+ * @param A_loc Local matrix in CRS format [out].
+ * @param dims Dimensions of cartesian topology. 
+ * @param coords Process coordinates in topology.
+ * @param global_grid Global UnitSqaureGrid.
+ * @param local_grid Local UnitSquareGrid.
+ */
 void assemble_local_matrix(CRSMatrix &A_loc, std::vector<int> const& dims, std::vector<int> const& coords,
                            UnitSquareGrid const& global_grid, LocalUnitSquareGrid const& local_grid) {
     const double hx = 1.0 / (global_grid.Nx - 1);
@@ -53,12 +62,10 @@ void assemble_local_matrix(CRSMatrix &A_loc, std::vector<int> const& dims, std::
     std::size_t Nxt = local_grid.Nx + 2;
 
     /*
-    The local finite difference matrix will be of size
-    (local_grid.Nx * local_grid.Ny) x 
-    ((local_grid.Nx + 2) * (local_grid.Ny + 2)), i.e.
-    every row corresponds to a node in the local grid.
-    The number of columns also includes neighboring
-    nodes that must be included in the 5 point stencil. 
+    The local finite difference matrix will only include
+    rows that correspond to nodes in the local grid.
+    The columns also include neighboring nodes that
+    must be included in the 5 point stencil.
     */
 
     // loop over all local nodes
