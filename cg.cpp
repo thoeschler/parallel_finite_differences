@@ -459,12 +459,20 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     matvec_bottomleft_corner(A_loc, p_loc_padded, Ap_loc, local_grid);
 }
 
+/**
+ * @brief Get ranks of neighboring processes.
+ * 
+ * @param top Top neighbor.
+ * @param bottom Bottom neighbor.
+ * @param left Left neighbor.
+ * @param right Right neighbor.
+ * @param comm_cart Communicator for cartesian topology.
+ */
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
     std::vector<int> neighbor_ranks(4, -1); // top / bottom / left / right order
     MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
-    // TODO: is the ordering implementation dependent?
 
     top = neighbor_ranks[Side::top] >= 0 ? neighbor_ranks[Side::top] : MPI_PROC_NULL;
     bottom = neighbor_ranks[Side::bottom] >= 0 ? neighbor_ranks[Side::bottom] : MPI_PROC_NULL;
@@ -482,9 +490,11 @@ void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm c
 void copy_b_loc_to_p_loc(std::vector<double> &p_loc_padded, std::vector<double> const& b_loc,
     LocalUnitSquareGrid const& local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
+    int index;
+    #pragma omp parallel for private(index)
     for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
         for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
-            int index = (idy + 1) * Nxt + idx + 1;
+            index = (idy + 1) * Nxt + idx + 1;
             p_loc_padded[index] = b_loc[idy * local_grid.Nx + idx];
         }
     }
@@ -532,6 +542,7 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
     std::size_t Nxt = local_grid.Nx + 2;
 
     std::size_t index;
+    #pragma omp parallel for private(index)
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
             index = Nxt * (row + 1) + col + 1;
@@ -555,6 +566,7 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
     std::size_t Nxt = local_grid.Nx + 2;
 
     std::size_t index;
+    #pragma omp parallel for private(index)
     for (std::size_t row = 0; row < local_grid.Ny; ++row) {
         for (std::size_t col = 0; col < local_grid.Nx; ++col) {
             index = Nxt * (row + 1) + col + 1;
