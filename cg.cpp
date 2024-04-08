@@ -52,6 +52,8 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
  * For options 2) and 3) the part of the matrix vector product which does not require any communication
  * is computed during data exchange.
  * 
+ * To use different forms of communication (un)comment the respective lines below.
+ * 
  * @param A_loc Local matrix.
  * @param b_loc Local right hand side.
  * @param u_loc Solution vector.
