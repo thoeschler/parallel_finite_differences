@@ -8,13 +8,19 @@ inline bool is_closer(double number, double than, double to) {
     return std::abs(number - to) < std::abs(to - than);
 }
 
-void initialize_cartesian_topology_dimensions(const int ndims, std::vector<int> &dims, UnitSquareGrid const& global_grid) {
+/**
+ * @brief Initialize dimensions of cartesian topology.
+ * 
+ * @param dims Dimensions [out].
+ * @param global_grid Global UnitSquareGrid.
+ */
+void initialize_cartesian_topology_dimensions(std::vector<int> &dims, UnitSquareGrid const& global_grid) {
     int nnodes;
     MPI_Comm_size(MPI_COMM_WORLD, &nnodes);
     
     // first let MPI create dims
     std::fill(dims.begin(), dims.end(), 0);
-    MPI_Dims_create(nnodes, ndims, dims.data());
+    MPI_Dims_create(nnodes, 2, dims.data());
 
     // swap dims if they do not match the grid size
     if ((global_grid.Nx > global_grid.Ny && dims[1] < dims[0])
@@ -36,7 +42,7 @@ void initialize_cartesian_topology_dimensions(const int ndims, std::vector<int> 
     for (int dimx = dims[1] - 1; dimx > 0 && dimx <= nnodes; dimx += direction) {
         if (is_divisible(nnodes, dimx)) {
             new_dims = {0, dimx};
-            MPI_Dims_create(nnodes, ndims, new_dims.data());
+            MPI_Dims_create(nnodes, 2, new_dims.data());
             new_proc_ratio = new_dims[1] / new_dims[0];
             if (is_closer(new_proc_ratio, proc_ratio, node_ratio)) {
                 proc_ratio = new_proc_ratio;
