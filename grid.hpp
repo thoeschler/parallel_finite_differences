@@ -3,17 +3,17 @@
 #include <iostream>
 
 struct UnitSquareGrid {
-    std::size_t Nx;
-    std::size_t Ny;
+    std::size_t Nx; // number of grid points in x-direction
+    std::size_t Ny; // number of grid points in y-direction
     UnitSquareGrid(std::size_t Nx_, std::size_t Ny_) : Nx{Nx_}, Ny{Ny_} {};
     void info() const;
 };
 
 struct LocalUnitSquareGrid {
-    std::size_t Nx;
-    std::size_t Ny;
-    std::size_t idx_glob_start;
-    std::size_t idy_glob_start;
+    std::size_t Nx; // number of local grid points in x-direction
+    std::size_t Ny; // number of local grid points in y-direction
+    std::size_t idx_glob_start; // starting x-index in global grid
+    std::size_t idy_glob_start; // starting y-index in global grid
     bool has_bottom_neighbor, has_top_neighbor, has_left_neighbor, has_right_neighbor;
     LocalUnitSquareGrid(std::size_t Nx_, std::size_t Ny_, std::size_t idx_glob_start_, std::size_t idy_glob_start_,
                         std::vector<int> const& coords, std::vector<int> const& dims) {

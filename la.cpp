@@ -2,6 +2,13 @@
 
 #include <assert.h>
 
+/**
+ * @brief Matrix vector product for CRS Matrix.
+ * 
+ * @param A CRS Matrix.
+ * @param b Input vector.
+ * @param result Result vector.
+ */
 void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result) {
     std::size_t row_start;
     std::size_t row_end;
@@ -16,6 +23,13 @@ void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> 
     }
 }
 
+/**
+ * @brief Dot product.
+ * 
+ * @param a First vector.
+ * @param b Second vector.
+ * @return double: result.
+ */
 double dot(std::vector<double> const& a, std::vector<double> const& b) {
     assert(a.size() == b.size());
 
@@ -30,6 +44,12 @@ double dot(std::vector<double> const& a, std::vector<double> const& b) {
     return result;
 }
 
+/**
+ * @brief Vector addition.
+ * 
+ * @param inout First input vector (will be overwritten).
+ * @param in Second input vector.
+ */
 void add(std::vector<double> &inout, std::vector<double> const&in) {
     assert(inout.size() == in.size());
 
@@ -39,6 +59,14 @@ void add(std::vector<double> &inout, std::vector<double> const&in) {
     }
 }
 
+/**
+ * @brief Combined addition and multiplication, i.e. out = in1 + multiplier * in2.
+ * 
+ * @param in1 First input vector.
+ * @param in2 Second input vector.
+ * @param out Output vector.
+ * @param multiplier Multiplier.
+ */
 void add_mult(std::vector<double> const&in1, std::vector<double> const&in2, std::vector<double> &out, double multiplier) {
     assert(in1.size() == in2.size());
     assert(in2.size() == out.size());
@@ -49,6 +77,13 @@ void add_mult(std::vector<double> const&in1, std::vector<double> const&in2, std:
     }
 }
 
+/**
+ * @brief Combined addition and multiplication, i.e. inout = inout + multiplier * in.
+ * 
+ * @param inout First input vector (will be overwritten).
+ * @param in Second input vector.
+ * @param multiplier Multiplier.
+ */
 void add_mult_finout(std::vector<double> &inout, std::vector<double> const&in, double multiplier) {
     assert(inout.size() == in.size());
 
@@ -58,6 +93,13 @@ void add_mult_finout(std::vector<double> &inout, std::vector<double> const&in, d
     }
 }
 
+/**
+ * @brief Combined addition and multiplication, i.e. inout = inout + multiplier * in.
+ * 
+ * @param inout First input vector.
+ * @param in Second input vector (will be overwritten).
+ * @param multiplier Multiplier.
+ */
 void add_mult_sinout(std::vector<double> const&in, std::vector<double> &inout, double multiplier) {
     assert(inout.size() == in.size());
 
