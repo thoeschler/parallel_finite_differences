@@ -52,6 +52,15 @@ void initialize_cartesian_topology_dimensions(std::vector<int> &dims, UnitSquare
     }
 }
 
+/**
+ * @brief Get the processes local dimensions.
+ * 
+ * @param global_grid Global UnitSquareGrid.
+ * @param dims Dimensions of cartesian topology.
+ * @param coords Coordinates of the process.
+ * @return std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>
+ * Local dimensions, global starting indices.
+ */
 std::tuple<std::size_t, std::size_t, std::size_t, std::size_t> get_local_dimensions(
     UnitSquareGrid const& global_grid, std::vector<int> const& dims, std::vector<int> const& coords) {
     std::size_t px = coords[1];
