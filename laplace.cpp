@@ -10,7 +10,7 @@
 #include <mpi.h>
 #include <tuple>
 
-double bc(double x, double y) {
+double boundary_condition(double x, double y) {
     return x + y;
 }
 
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
 
     // assemble right hand side locally
     std::vector<double> b_loc;
-    assemble_local_rhs(b_loc, global_grid, local_grid, coords, dims, bc);
+    assemble_local_rhs(b_loc, global_grid, local_grid, coords, dims, boundary_condition);
 
     // assemble matrix locally
     CRSMatrix A_loc;
@@ -56,8 +56,8 @@ int main(int argc, char** argv) {
 
     // compute error
     double l1_error = 0.0, linf_error = 0.0;
-    compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
-    compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, bc, comm_cart);
+    compute_l1_error(&l1_error, u_loc, global_grid, local_grid, root, boundary_condition, comm_cart);
+    compute_linf_error(&linf_error, u_loc, global_grid, local_grid, root, boundary_condition, comm_cart);
 
     if (rank == root) {
         std::cout << "\n";

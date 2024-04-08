@@ -9,7 +9,7 @@
 
 void assemble_local_rhs(std::vector<double> &b_loc, UnitSquareGrid const& global_grid, 
                         LocalUnitSquareGrid const& local_grid, std::vector<int> const &coords,
-                        std::vector<int> const& dims, std::function<double(double, double)> bc);
+                        std::vector<int> const& dims, std::function<double(double, double)> boundary_condition);
 
 void assemble_local_matrix(CRSMatrix &A, std::vector<int> const& dims, std::vector<int> const& coords,
     UnitSquareGrid const& global_grid, LocalUnitSquareGrid const& local_grid);
