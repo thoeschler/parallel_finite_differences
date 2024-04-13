@@ -5,6 +5,7 @@ Solve 2D Laplace equation with Dirichlet boundary conditions with finite differe
 
 ### How to use
 The main file is laplace.cpp.
+Boundary conditions can be changed by overwriting `boundary_condition` function.
 
 Compile using `make build`.
 
