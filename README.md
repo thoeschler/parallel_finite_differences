@@ -1,6 +1,7 @@
 # parallel_finite_differences
 
-Solve 2D Laplace equation with Dirichlet boundary conditions in parallel using MPI and OpenMP.
+Solve 2D Laplace equation with Dirichlet boundary conditions with finite differences using MPI and OpenMP.
+
 
 ### How to use
 The main file is laplace.cpp.
