@@ -18,7 +18,7 @@ double compute_l1_error(std::vector<double> const& u, std::function<double(doubl
             error += std::abs(u[idy * Nxt + idx] - u_ana(x, y)); 
         }
     }
-    return error;
+    return error / (Nxt * Nyt);
 }
 
 double compute_linf_error(std::vector<double> const& u, std::function<double(double, double)> u_ana, UnitSquareGrid const& grid) {
