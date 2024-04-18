@@ -3,6 +3,7 @@
 #include <iostream>
 #include <assert.h>
 #include <cmath>
+#include <chrono>
 
 void matmul(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &out) {
     std::fill(out.begin(), out.end(), 0.0);
@@ -77,6 +78,7 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
 
     std::size_t counter = 0;
 
+    const auto start = std::chrono::high_resolution_clock::now();
     while (!converged) {
         matmul(A, p, Ap);
         alpha = dot(r, r) / dot(Ap, p);
@@ -93,4 +95,7 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
         }
         ++counter;
     }
+    const auto end = std::chrono::high_resolution_clock::now();
+    const std::chrono::duration<double> avg_time = (end - start) / counter;
+    std::cout << "average time / it: " << avg_time.count() << "s\n";
 }
