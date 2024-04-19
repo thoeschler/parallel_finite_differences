@@ -6,7 +6,7 @@ LIBS=#-fopenmp
 ALL = laplace.o la.o crs.o finite_diff.o topology.o grid.o cg.o
 
 build: $(ALL)
-	$(CXX) $(CXXFLAGS) $(ALL) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(ALL) $(LIBS) -o laplace.out
 
 run:
 	np=$1

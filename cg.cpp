@@ -45,12 +45,14 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
  * @brief Parallel Conjugate Gradient (CG) Method.
  * 
  * Different ways of communication are possible, namely:
- * 1) "Blocking" communication (Matrix vector product is computed only once the communication is done).
- * 2) Nonblocking point to point communication using Isend/Irecv.
+ * 1) Nonblocking point to point communication using Isend/Irecv.
+ * 2) "Blocking" communication (Matrix vector product is computed only once the communication is done).
  * 3) Onesided communication.
  * 
- * For options 2) and 3) the part of the matrix vector product which does not require any communication
+ * For options 1) and 3) the part of the matrix vector product which does not require any communication
  * is computed during data exchange.
+ * 
+ * Choose form of communication by adjusting the config.mk file.
  * 
  * @param A_loc Local matrix.
  * @param b_loc Local right hand side.
@@ -167,7 +169,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
                 top, bottom, left, right);
         #elif communication_type == BLOCKING
-        // 2) Point to point communication
+        // 2) Blocking communication
         cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
                 top, bottom, left, right);
         #elif communication_type == ONESIDED
