@@ -180,6 +180,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         // 3) Onesided communication
         cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
             window, get_group, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
+        #else
+        #error Invalid communication type: (communication_type).
         #endif
 
         /*
