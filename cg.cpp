@@ -3,6 +3,10 @@
 
 #include <assert.h>
 
+#define POINT_TO_POINT 0
+#define BLOCKING 1
+#define ONESIDED 2
+
 enum Side { top = 0, bottom = 1, left = 2, right = 3 };
 
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
@@ -45,14 +49,14 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
  * @brief Parallel Conjugate Gradient (CG) Method.
  * 
  * Different ways of communication are possible, namely:
- * 1) "Blocking" communication (Matrix vector product is computed only once the communication is done).
- * 2) Nonblocking point to point communication using Isend/Irecv.
+ * 1) Nonblocking point to point communication using Isend/Irecv.
+ * 2) "Blocking" communication (Matrix vector product is computed only once the communication is done).
  * 3) Onesided communication.
  * 
- * For options 2) and 3) the part of the matrix vector product which does not require any communication
+ * For options 1) and 3) the part of the matrix vector product which does not require any communication
  * is computed during data exchange.
  * 
- * To use different forms of communication (un)comment the respective lines below.
+ * Choose form of communication by adjusting the config.mk file.
  * 
  * @param A_loc Local matrix.
  * @param b_loc Local right hand side.
@@ -107,22 +111,23 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     int top, bottom, left, right;
     get_neighbor_ranks(top, bottom, left, right, comm_cart);
 
+    #if communication_type == ONESIDED
     /*
-    ** only for option 3) **
     The neighboring local grid sizes must be known for
     onesided communication.
     */
     std::vector<int> Nx_neighbors(4), Ny_neighbors(4);
     MPI_Neighbor_allgather(&local_grid.Nx, 1, MPI_INT, Nx_neighbors.data(), 1, MPI_INT, comm_cart);
     MPI_Neighbor_allgather(&local_grid.Ny, 1, MPI_INT, Ny_neighbors.data(), 1, MPI_INT, comm_cart);
+    #endif
 
     // define "column" type for communication with left/right neighbors
     MPI_Datatype col_type;
     MPI_Type_vector(local_grid.Ny, 1, Nxt, MPI_DOUBLE, &col_type);
     MPI_Type_commit(&col_type);
     
+    #if communication_type == ONESIDED
     /*
-    ** only for option 3) **
     The local grid size of left and right neighbors may be different,
     so separate data types are needed here.
     */
@@ -132,7 +137,6 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Type_commit(&col_type_left);
     MPI_Type_commit(&col_type_right);
 
-    // ** only for option 3) **
     MPI_Win window;
     int disp_unit = sizeof(double);
     MPI_Aint win_size = p_loc_padded.size() * disp_unit;
@@ -148,6 +152,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Group world_group;
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Group_incl(world_group, group_ranks.size(), group_ranks.data(), &get_group);
+    #endif
 
     double start = MPI_Wtime();
     while (!converged) {
@@ -156,22 +161,28 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         Exchange data from p_loc and compute matvec product locally.
         */
         // ** only for options 1) and 2) **
-        // std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
-        // std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
-
-        // ** only for option 3) **
+        #if (communication_type == POINT_TO_POINT) || (communication_type == BLOCKING)
+        std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
+        std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
+        #elif communication_type == ONESIDED
         std::vector<MPI_Request> get_requests(4, MPI_REQUEST_NULL);
+        #endif
 
-        // ** uncomment the desired form of communication here **
-        // 1) "Blocking" communication
-        // cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
-        //         top, bottom, left, right);
-        // 2) Point to point communication
-        // cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
-        //         top, bottom, left, right);
+        #if communication_type == POINT_TO_POINT 
+        // 1) Point to point communication
+        cg_matvec_point_to_point(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
+                top, bottom, left, right);
+        #elif communication_type == BLOCKING
+        // 2) Blocking communication
+        cg_matvec_blocking(A_loc, Ap_loc, p_loc_padded, local_grid, send_requests, recv_requests, comm_cart, col_type,
+                top, bottom, left, right);
+        #elif communication_type == ONESIDED
         // 3) Onesided communication
         cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
             window, get_group, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
+        #else
+        #error Invalid communication type: (communication_type).
+        #endif
 
         /*
         3rd step:
@@ -207,8 +218,9 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         7th step:
         Compute pk+1 = rk+1 + gk * pk.
         */
-        // ** only for options 1) and 2) **
-        // MPI_Waitall(4, send_requests.data(), MPI_STATUSES_IGNORE);
+        #if communication_type == POINT_TO_POINT || communication_type == BLOCKING
+        MPI_Waitall(4, send_requests.data(), MPI_STATUSES_IGNORE);
+        #endif
         add_mult_sinout_padded(r_loc, p_loc_padded, gamma, local_grid);
 
         // info
@@ -223,10 +235,11 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     if (rank == 0) std::cout << "average time / it: " << avg_time << "s\n";
 
     MPI_Type_free(&col_type);
-    // ** only for option 3) **
+    #if communication_type == ONESIDED
     MPI_Win_free(&window);
     MPI_Type_free(&col_type_left);
     MPI_Type_free(&col_type_right);
+    #endif
 }
 
 /**

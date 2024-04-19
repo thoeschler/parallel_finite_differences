@@ -3,17 +3,17 @@
 #include <iostream>
 #include <assert.h>
 #include <cmath>
+#include <chrono>
 
 void matmul(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &out) {
     std::fill(out.begin(), out.end(), 0.0);
-    std::size_t row = 0;
-    std::size_t row_index = A.row_index(row + 1);
-    for (std::size_t value_count = 0; value_count < A.size(); ++value_count) {
-        if (value_count == row_index) {
-            ++row;
-            row_index = A.row_index(row + 1);
+    std::size_t row_start, row_end;
+    for (std::size_t row = 0; row < A.nrows(); ++row) {
+        row_start = A.row_index(row);
+        row_end = A.row_index(row + 1);
+        for (std::size_t value_count = row_start; value_count < row_end; ++value_count) {
+            out[row] += A.value(value_count) * b[A.col_index(value_count)];
         }
-        out[row] += A.value(value_count) * b[A.col_index(value_count)];
     }
 }
 
@@ -78,6 +78,7 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
 
     std::size_t counter = 0;
 
+    const auto start = std::chrono::high_resolution_clock::now();
     while (!converged) {
         matmul(A, p, Ap);
         alpha = dot(r, r) / dot(Ap, p);
@@ -94,4 +95,7 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
         }
         ++counter;
     }
+    const auto end = std::chrono::high_resolution_clock::now();
+    const std::chrono::duration<double> avg_time = (end - start) / counter;
+    std::cout << "average time / it: " << avg_time.count() << "s\n";
 }
