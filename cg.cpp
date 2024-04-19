@@ -3,6 +3,10 @@
 
 #include <assert.h>
 
+#define POINT_TO_POINT 0
+#define BLOCKING 1
+#define ONESIDED 2
+
 enum Side { top = 0, bottom = 1, left = 2, right = 3 };
 
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
@@ -157,7 +161,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         Exchange data from p_loc and compute matvec product locally.
         */
         // ** only for options 1) and 2) **
-        #if communication_type == BLOCKING || communication_type == POINT_TO_POINT
+        #if (communication_type == POINT_TO_POINT) || (communication_type == BLOCKING)
         std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
         std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
         #elif communication_type == ONESIDED
@@ -229,10 +233,11 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     if (rank == 0) std::cout << "average time / it: " << avg_time << "s\n";
 
     MPI_Type_free(&col_type);
-    // ** only for option 3) **
+    #if communication_type == ONESIDED
     MPI_Win_free(&window);
     MPI_Type_free(&col_type_left);
     MPI_Type_free(&col_type_right);
+    #endif
 }
 
 /**
