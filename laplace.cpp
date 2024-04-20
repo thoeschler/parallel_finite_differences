@@ -35,10 +35,8 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(comm_cart, &cart_rank);
     MPI_Cart_coords(comm_cart, rank, ndims, coords.data());
 
-    // get local dimensions, create local grid
-    std::size_t Nx_loc, Ny_loc, idx_glob_start, idy_glob_start;
-    std::tie(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start) = get_local_dimensions(global_grid, dims, coords);
-    LocalUnitSquareGrid local_grid(Nx_loc, Ny_loc, idx_glob_start, idy_glob_start, coords, dims);
+    // create local grid
+    LocalUnitSquareGrid local_grid(global_grid, dims, coords);
 
     // assemble right hand side locally
     std::vector<double> b_loc;
