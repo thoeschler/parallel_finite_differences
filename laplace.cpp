@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     assemble_local_rhs(b_loc, global_grid, local_grid, coords, dims, boundary_condition);
 
     // assemble matrix locally
-    CRSMatrix A_loc;
+    CRSMatrix A_loc(5 * local_grid.Nx * local_grid.Ny, local_grid.Nx * local_grid.Ny);
     assemble_local_matrix(A_loc, dims, coords, global_grid, local_grid);
 
     // solve system
