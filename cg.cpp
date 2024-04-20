@@ -482,15 +482,8 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
  * @param comm_cart Communicator for cartesian topology.
  */
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart) {
-    int rank;
-    MPI_Comm_rank(comm_cart, &rank);
-    std::vector<int> neighbor_ranks(4, -1); // top / bottom / left / right order
-    MPI_Neighbor_allgather(&rank, 1, MPI_INT, neighbor_ranks.data(), 1, MPI_INT, comm_cart);
-
-    top = neighbor_ranks[Side::top] >= 0 ? neighbor_ranks[Side::top] : MPI_PROC_NULL;
-    bottom = neighbor_ranks[Side::bottom] >= 0 ? neighbor_ranks[Side::bottom] : MPI_PROC_NULL;
-    left = neighbor_ranks[Side::left] >= 0 ? neighbor_ranks[Side::left] : MPI_PROC_NULL;
-    right = neighbor_ranks[Side::right] >= 0 ? neighbor_ranks[Side::right] : MPI_PROC_NULL;
+    MPI_Cart_shift(comm_cart, 1, 1, &left, &right);
+    MPI_Cart_shift(comm_cart, 0, 1, &top, &bottom);
 }
 
 /**
