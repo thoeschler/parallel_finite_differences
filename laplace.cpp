@@ -8,7 +8,6 @@
 #include <iostream>
 #include <vector>
 #include <mpi.h>
-#include <tuple>
 
 double boundary_condition(double x, double y) { return x + y; }
 double analytical_solution(double x, double y) { return x + y; }
