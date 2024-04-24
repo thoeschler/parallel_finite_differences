@@ -1,6 +1,6 @@
 # parallel_finite_differences
 
-This code was written as part of a project of a parallel programming university course.
+This code was written as part of a project for a parallel programming university course.
 
 It solves the 2D Laplace equation with Dirichlet boundary conditions with finite differences on a unit square using MPI and OpenMP.
 
@@ -10,4 +10,5 @@ It solves the 2D Laplace equation with Dirichlet boundary conditions with finite
 
 ### Options
 * change Dirichlet boundary conditions by redefining `boundary_condition` in [laplace.cpp](https://github.com/thoeschler/parallel_finite_differences/blob/main/laplace.cpp)
+* change analytical solution by redefining `analytical_solution` in [laplace.cpp](https://github.com/thoeschler/parallel_finite_differences/blob/main/laplace.cpp)
 * different MPI communication types are possible: choose the type by setting `COMMUNICATION_TYPE` in [config.mk](https://github.com/thoeschler/parallel_finite_differences/blob/main/config.mk)
