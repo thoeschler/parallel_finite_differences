@@ -5,6 +5,60 @@
 #include <cmath>
 #include <chrono>
 
+void operator *=(std::vector<double> &v1, double multiplier) {
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        v1[i] *= multiplier;
+    }
+}
+
+void operator +=(std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        v1[i] += v2[i];
+    }
+}
+
+void operator -=(std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        v1[i] -= v2[i];
+    }
+}
+
+std::vector<double> operator *(const std::vector<double> &v1, double multiplier) {
+    std::vector<double> out(v1.size());
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = multiplier * v1[i];
+    }
+    return out;
+}
+
+std::vector<double> operator *(double multiplier, const std::vector<double> &v1) {
+    std::vector<double> out(v1.size());
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = multiplier * v1[i];
+    }
+    return out;
+}
+
+std::vector<double> operator +(const std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    std::vector<double> out(v1.size());
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = v1[i] + v2[i];
+    }
+    return out;
+}
+
+std::vector<double> operator -(const std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    std::vector<double> out(v1.size());
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = v1[i] - v2[i];
+    }
+    return out;
+}
+
 void matmul(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &out) {
     std::fill(out.begin(), out.end(), 0.0);
     std::size_t row_start, row_end;
@@ -28,51 +82,18 @@ double dot(std::vector<double> const& a, std::vector<double> const& b) {
     return result;
 }
 
-void add(std::vector<double> &inout, std::vector<double> const&in) {
-    assert(inout.size() == in.size());
-
-    for (std::size_t i = 0; i < inout.size(); ++i) {
-        inout[i] += in[i];
-    }
-}
-
-void add_mult(std::vector<double> const&in1, std::vector<double> const&in2, std::vector<double> &out, double multiplier) {
-    assert(in1.size() == in2.size());
-    assert(in2.size() == out.size());
-
-    for (std::size_t i = 0; i < out.size(); ++i) {
-        out[i] = in1[i] + multiplier * in2[i];
-    }
-}
-
-void add_mult_finout(std::vector<double> &inout, std::vector<double> const&in, double multiplier) {
-    assert(inout.size() == in.size());
-
-    for (std::size_t i = 0; i < inout.size(); ++i) {
-        inout[i] += multiplier * in[i];
-    }
-}
-
-void add_mult_sinout(std::vector<double> const&in, std::vector<double> &inout, double multiplier) {
-    assert(inout.size() == in.size());
-
-    for (std::size_t i = 0; i < inout.size(); ++i) {
-        inout[i] = in[i] + multiplier * inout[i];
-    }
-}
-
 void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, const double tol, bool verbose) {
     bool converged = false;
     double alpha, gamma;
     std::size_t size = b.size();
-    std::vector<double> p(size), r(size), Ap(size);
+    std::vector<double> p(size), Ap(size);
 
     double bb = dot(b, b);
     double rr, rr_old;
 
     // initialize p (direction) and r (residual)
     matmul(A, u, Ap);
-    add_mult(b, Ap, r, -1.0);
+    std::vector<double> r = b - Ap;
     p = r;
     rr_old = dot(r, r);
 
@@ -82,12 +103,12 @@ void cg(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &u, 
     while (!converged) {
         matmul(A, p, Ap);
         alpha = dot(r, r) / dot(Ap, p);
-        add_mult_finout(u, p, alpha);
-        add_mult_finout(r, Ap, -alpha);
+        u += alpha * p;
+        r -= alpha * Ap;
         rr = dot(r, r);
         gamma = rr / rr_old;
         rr_old = rr;
-        add_mult_sinout(r, p, gamma);
+        p = r + gamma * p;
 
         converged = (rr <= tol * tol * bb);
         if (verbose && counter % 100 == 0) {
