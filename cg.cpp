@@ -1,7 +1,7 @@
 #include "cg.hpp"
 #include "la.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 #define POINT_TO_POINT 0
 #define BLOCKING 1

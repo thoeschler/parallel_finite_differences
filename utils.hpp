@@ -3,7 +3,7 @@
 
 #include <functional>
 #include <vector>
-#include <assert.h>
+#include <cassert>
 
 
 void compute_l1_error(double *error, std::vector<double> const& u_loc, UnitSquareGrid const& global_grid,

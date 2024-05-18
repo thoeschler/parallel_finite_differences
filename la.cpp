@@ -1,6 +1,6 @@
 #include "la.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 void operator *=(std::vector<double> &v1, double multiplier) {
     #pragma omp parallel for
