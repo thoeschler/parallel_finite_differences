@@ -203,7 +203,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         5th step:
         Compute rk+1 = rk - alphak * A * pk.
         */
-        add_mult_finout(r_loc, Ap_loc, -alpha);
+        r_loc -= alpha * Ap_loc;
 
         /*
         6th step:

@@ -2,11 +2,14 @@
 #include "crs.hpp"
 
 #include <vector>
-#include <mpi.h>
+
+void operator *=(std::vector<double> &v1, double multiplier);
+void operator +=(std::vector<double> &v1, const std::vector<double> &v2);
+void operator -=(std::vector<double> &v1, const std::vector<double> &v2);
+std::vector<double> operator *(const std::vector<double> &v1, double multiplier);
+std::vector<double> operator *(double multiplier, const std::vector<double> &v1);
+std::vector<double> operator +(const std::vector<double> &v1, const std::vector<double> &v2);
+std::vector<double> operator -(const std::vector<double> &v1, const std::vector<double> &v2);
 
 void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result);
 double dot(std::vector<double> const& a, std::vector<double> const& b);
-void add(std::vector<double> &inout, std::vector<double> const&in);
-void add_mult(std::vector<double> const&in1, std::vector<double> const&in2, std::vector<double> &out, double multiplier);
-void add_mult_finout(std::vector<double> &inout, std::vector<double> const&in, double multiplier);
-void add_mult_sinout(std::vector<double> const&in, std::vector<double> &inout, double multiplier);

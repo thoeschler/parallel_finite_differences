@@ -2,6 +2,67 @@
 
 #include <assert.h>
 
+void operator *=(std::vector<double> &v1, double multiplier) {
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        v1[i] *= multiplier;
+    }
+}
+
+void operator +=(std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        v1[i] += v2[i];
+    }
+}
+
+void operator -=(std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        v1[i] -= v2[i];
+    }
+}
+
+std::vector<double> operator *(const std::vector<double> &v1, double multiplier) {
+    std::vector<double> out(v1.size());
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = multiplier * v1[i];
+    }
+    return out;
+}
+
+std::vector<double> operator *(double multiplier, const std::vector<double> &v1) {
+    std::vector<double> out(v1.size());
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = multiplier * v1[i];
+    }
+    return out;
+}
+
+std::vector<double> operator +(const std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    std::vector<double> out(v1.size());
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = v1[i] + v2[i];
+    }
+    return out;
+}
+
+std::vector<double> operator -(const std::vector<double> &v1, const std::vector<double> &v2) {
+    assert(v1.size() == v2.size());
+    std::vector<double> out(v1.size());
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < v1.size(); ++i) {
+        out[i] = v1[i] - v2[i];
+    }
+    return out;
+}
+
 /**
  * @brief Matrix vector product for CRS Matrix.
  * 
@@ -42,69 +103,4 @@ double dot(std::vector<double> const& a, std::vector<double> const& b) {
         }
     }
     return result;
-}
-
-/**
- * @brief Vector addition.
- * 
- * @param inout First input vector (will be overwritten).
- * @param in Second input vector.
- */
-void add(std::vector<double> &inout, std::vector<double> const&in) {
-    assert(inout.size() == in.size());
-
-    #pragma omp parallel for
-    for (std::size_t i = 0; i < inout.size(); ++i) {
-        inout[i] += in[i];
-    }
-}
-
-/**
- * @brief Combined addition and multiplication, i.e. out = in1 + multiplier * in2.
- * 
- * @param in1 First input vector.
- * @param in2 Second input vector.
- * @param out Output vector.
- * @param multiplier Multiplier.
- */
-void add_mult(std::vector<double> const&in1, std::vector<double> const&in2, std::vector<double> &out, double multiplier) {
-    assert(in1.size() == in2.size());
-    assert(in2.size() == out.size());
-
-    #pragma omp parallel for
-    for (std::size_t i = 0; i < out.size(); ++i) {
-        out[i] = in1[i] + multiplier * in2[i];
-    }
-}
-
-/**
- * @brief Combined addition and multiplication, i.e. inout = inout + multiplier * in.
- * 
- * @param inout First input vector (will be overwritten).
- * @param in Second input vector.
- * @param multiplier Multiplier.
- */
-void add_mult_finout(std::vector<double> &inout, std::vector<double> const&in, double multiplier) {
-    assert(inout.size() == in.size());
-
-    #pragma omp parallel for
-    for (std::size_t i = 0; i < inout.size(); ++i) {
-        inout[i] += multiplier * in[i];
-    }
-}
-
-/**
- * @brief Combined addition and multiplication, i.e. inout = inout + multiplier * in.
- * 
- * @param inout First input vector.
- * @param in Second input vector (will be overwritten).
- * @param multiplier Multiplier.
- */
-void add_mult_sinout(std::vector<double> const&in, std::vector<double> &inout, double multiplier) {
-    assert(inout.size() == in.size());
-
-    #pragma omp parallel for
-    for (std::size_t i = 0; i < inout.size(); ++i) {
-        inout[i] = in[i] + multiplier * inout[i];
-    }
 }
