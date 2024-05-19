@@ -14,4 +14,4 @@ run_par:
 	cd $(SRC_PAR) && make run np=$(np) Nx=$(Nx) Ny=$(Ny)
 
 clean:
-	rm -f src/par/*.o  src/seq/*.o *.out
+	rm -f src/*.o src/par/*.o  src/seq/*.o *.out
