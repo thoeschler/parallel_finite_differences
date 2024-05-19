@@ -3,10 +3,6 @@
 
 #include <iostream>
 
-bool on_boundary(double x, double y) {
-    constexpr double tol = 1e-7;
-    return (std::abs(x) - 1) < tol || (std::abs(y) - 1.0) < tol;
-}
 
 void assemble_rhs(std::vector<double> &b, UnitSquareGrid const& grid, std::function<double(double, double)> bc) {
     std::fill(b.begin(), b.end(), 0.0);

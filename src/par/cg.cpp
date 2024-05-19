@@ -301,8 +301,6 @@ void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std:
     Compute A * pk locally. 
     */
     // matvec for all nodes after synchronization
-    std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
-
     MPI_Waitall(4, recv_requests.data(), MPI_STATUSES_IGNORE);
     matvec(A_loc, p_loc_padded, Ap_loc);
 }
