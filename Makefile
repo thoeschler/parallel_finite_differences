@@ -1,21 +1,17 @@
-include config.mk
+SRC_SEQ=src/seq
+SRC_PAR=src/par
 
-CXXFLAGS=-Wall -O3 -march=native -Dcommunication_type=$(COMMUNICATION_TYPE)
-LIBS=#-fopenmp
+sequential:
+	cd $(SRC_SEQ) && make laplace
 
-ALL = laplace.o la.o crs.o finite_diff.o topology.o grid.o cg.o
+parallel:
+	cd $(SRC_PAR) && make laplace
 
-build: $(ALL)
-	$(CXX) $(CXXFLAGS) $(ALL) $(LIBS) -o laplace.out
+run_seq:
+	cd $(SRC_SEQ) && make run Nx=$(Nx) Ny=$(Ny)
 
-run:
-	np=$1
-	Nx=$2
-	Ny=$3
-	mpirun -np $(np) ./laplace.out $(Nx) $(Ny)
+run_par:
+	cd $(SRC_PAR) && make run np=$(np) Nx=$(Nx) Ny=$(Ny)
 
 clean:
-	rm *.o *.out
-
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -o $@ -c $< $(LIBS)
+	rm -f src/par/*.o  src/seq/*.o *.out
