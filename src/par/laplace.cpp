@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
     // solve system
     std::vector<double> u_loc;
-    const double tol = 1e-9;
+    const double tol = 1e-12;
     parallel_cg(A_loc, b_loc, u_loc, local_grid, comm_cart, tol, true);
 
     // compute error

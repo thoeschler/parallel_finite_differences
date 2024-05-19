@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
     // solve system
     std::vector<double> u(Nxt * Nyt);
-    const double tol = 1e-9;
+    const double tol = 1e-12;
     cg(A, b, u, tol, true);
 
     // compute error

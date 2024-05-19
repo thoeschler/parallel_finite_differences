@@ -154,14 +154,15 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
     MPI_Group_incl(world_group, group_ranks.size(), group_ranks.data(), &get_group);
     #endif
 
-    double start = MPI_Wtime();
+    double start = 0.0, end = 0.0;
+    if (verbose) start = MPI_Wtime();
     while (!converged) {
         /*
         1st and 2nd step:
         Exchange data from p_loc and compute matvec product locally.
         */
         // ** only for options 1) and 2) **
-        #if (communication_type == POINT_TO_POINT) || (communication_type == BLOCKING)
+        #if communication_type == POINT_TO_POINT || communication_type == BLOCKING
         std::vector<MPI_Request> send_requests(4, MPI_REQUEST_NULL);
         std::vector<MPI_Request> recv_requests(4, MPI_REQUEST_NULL);
         #elif communication_type == ONESIDED
@@ -181,7 +182,7 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         cg_matvec_one_sided(A_loc, Ap_loc, p_loc_padded, local_grid, get_requests, comm_cart, col_type, col_type_left, col_type_right, 
             window, get_group, Nx_neighbors, Ny_neighbors, top, bottom, left, right);
         #else
-        #error Invalid communication type: (communication_type).
+        #error Invalid communication type.
         #endif
 
         /*
@@ -230,9 +231,12 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
         ++counter;
         converged = (rr <= tol * tol * bb);
     }
-    double end = MPI_Wtime();
-    double avg_time = counter == 0 ? 0.0: (end - start) / counter;
-    if (rank == 0) std::cout << "average time / it: " << avg_time << "s\n";
+
+    if (verbose) {
+        end = MPI_Wtime();
+        double avg_time = counter == 0 ? 0.0: (end - start) / counter;
+        if (rank == 0) std::cout << "average time / it: " << avg_time << "s\n";
+    }
 
     MPI_Type_free(&col_type);
     #if communication_type == ONESIDED
