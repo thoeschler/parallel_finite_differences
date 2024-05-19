@@ -3,7 +3,7 @@
 
 #include <functional>
 #include <vector>
-#include <assert.h>
+#include <cassert>
 
 double compute_l1_error(std::vector<double> const& u, std::function<double(double, double)> u_ana, UnitSquareGrid const& grid) {
     assert(u.size() == (grid.Nx - 2) * (grid.Ny - 2));
