@@ -71,6 +71,7 @@ std::vector<double> operator -(const std::vector<double> &v1, const std::vector<
  * @param result Result vector.
  */
 void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result) {
+    std::fill(result.begin(), result.end(), 0.0);
     std::size_t row_start;
     std::size_t row_end;
 
