@@ -6,4 +6,4 @@
 #include <tuple>
 
 
-void initialize_cartesian_topology_dimensions(std::vector<int> &dims, UnitSquareGrid const& global_grid);
+void initialize_cartesian_topology_dimensions(std::vector<int> &dims, const UnitSquareGrid &global_grid);

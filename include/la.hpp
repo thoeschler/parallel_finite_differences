@@ -11,5 +11,5 @@ std::vector<double> operator *(double multiplier, const std::vector<double> &v1)
 std::vector<double> operator +(const std::vector<double> &v1, const std::vector<double> &v2);
 std::vector<double> operator -(const std::vector<double> &v1, const std::vector<double> &v2);
 
-void matvec(CRSMatrix const&A, std::vector<double> const&b, std::vector<double> &result);
-double dot(std::vector<double> const& a, std::vector<double> const& b);
+void matvec(const CRSMatrix &A, const std::vector<double> &b, std::vector<double> &result);
+double dot(const std::vector<double> &a, const std::vector<double> &b);

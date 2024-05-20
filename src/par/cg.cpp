@@ -10,40 +10,40 @@
 enum Side { top = 0, bottom = 1, left = 2, right = 3 };
 
 void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm comm_cart);
-void copy_b_loc_to_p_loc(std::vector<double> &p_loc, std::vector<double> const& b_loc, LocalUnitSquareGrid const& local_grid);
-double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded, LocalUnitSquareGrid const& local_grid);
-void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded, double multiplier,
-    LocalUnitSquareGrid const& local_grid);
-void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid);
-void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
-    LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+void copy_b_loc_to_p_loc(std::vector<double> &p_loc, const std::vector<double> &b_loc, const LocalUnitSquareGrid &local_grid);
+double dot_padded(const std::vector<double> &not_padded, const std::vector<double> &padded, const LocalUnitSquareGrid &local_grid);
+void add_mult_finout_padded(std::vector<double>& inout, const std::vector<double> &in_padded, double multiplier,
+    const LocalUnitSquareGrid &local_grid);
+void add_mult_sinout_padded(const std::vector<double> &in, std::vector<double>& inout_padded, double multiplier,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_inner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_top_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_bottom_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_left_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_right_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_topleft_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_topright_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_bottomright_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void matvec_bottomleft_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid);
+void cg_matvec_blocking(const CRSMatrix &A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+    const LocalUnitSquareGrid &local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
     MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
-void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
-    LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+void cg_matvec_point_to_point(const CRSMatrix &A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+    const LocalUnitSquareGrid &local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
     MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right);
-void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
-    LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart, MPI_Datatype &col_type,
-    MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, MPI_Group const&get_group,
-    std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right);
+void cg_matvec_one_sided(const CRSMatrix &A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+    const LocalUnitSquareGrid &local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart, MPI_Datatype &col_type,
+    MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, const MPI_Group &get_group,
+    const std::vector<int> &Nx_neighbors, const std::vector<int> &Ny_neighbors, int top, int bottom, int left, int right);
 
 /**
  * @brief Parallel Conjugate Gradient (CG) Method.
@@ -66,8 +66,8 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
  * @param tol Error tolerance.
  * @param verbose Print status of CG iteration.
  */
-void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::vector<double> &u_loc,
-    LocalUnitSquareGrid const& local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
+void parallel_cg(const CRSMatrix &A_loc, const std::vector<double> &b_loc, std::vector<double> &u_loc,
+    const LocalUnitSquareGrid &local_grid, MPI_Comm comm_cart, const double tol, bool verbose) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
 
@@ -264,8 +264,8 @@ void parallel_cg(CRSMatrix const&A_loc, std::vector<double> const&b_loc, std::ve
  * @param left Left neighbor.
  * @param right Right neighbor.
  */
-void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
-        LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+void cg_matvec_blocking(const CRSMatrix &A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+        const LocalUnitSquareGrid &local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
         MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
@@ -325,8 +325,8 @@ void cg_matvec_blocking(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std:
  * @param left Left neighbor.
  * @param right Right neighbor.
  */
-void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
-        LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
+void cg_matvec_point_to_point(const CRSMatrix &A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+        const LocalUnitSquareGrid &local_grid, std::vector<MPI_Request> &send_requests, std::vector<MPI_Request> &recv_requests,
         MPI_Comm comm_cart, MPI_Datatype &col_type, int top, int bottom, int left, int right) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
@@ -407,10 +407,10 @@ void cg_matvec_point_to_point(CRSMatrix const&A_loc, std::vector<double> &Ap_loc
  * @param left Left neighbor.
  * @param right Right neighbor.
  */
-void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
-        LocalUnitSquareGrid const& local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart,
-        MPI_Datatype &col_type, MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, MPI_Group const&get_group,
-        std::vector<int> const&Nx_neighbors, std::vector<int> const&Ny_neighbors, int top, int bottom, int left, int right) {
+void cg_matvec_one_sided(const CRSMatrix &A_loc, std::vector<double> &Ap_loc, std::vector<double> &p_loc_padded,
+        const LocalUnitSquareGrid &local_grid, std::vector<MPI_Request> &get_requests, MPI_Comm comm_cart,
+        MPI_Datatype &col_type, MPI_Datatype &col_type_left, MPI_Datatype &col_type_right, MPI_Win &window, const MPI_Group &get_group,
+        const std::vector<int> &Nx_neighbors, const std::vector<int> &Ny_neighbors, int top, int bottom, int left, int right) {
     int rank;
     MPI_Comm_rank(comm_cart, &rank);
     std::size_t Nxt = local_grid.Nx + 2;
@@ -451,7 +451,6 @@ void cg_matvec_one_sided(CRSMatrix const&A_loc, std::vector<double> &Ap_loc, std
     Compute A * pk locally.
     */
     // 2.1: matvec for all "inner nodes" (those which do not require any data exchange)
-    std::fill(Ap_loc.begin(), Ap_loc.end(), 0.0);
     matvec_inner(A_loc, p_loc_padded, Ap_loc, local_grid);
 
     MPI_Win_complete(window);
@@ -495,10 +494,10 @@ void get_neighbor_ranks(int &top, int &bottom, int &left, int &right, MPI_Comm c
  * @param b_loc Non-padded vector.
  * @param local_grid Local UnitSquareGrid.
  */
-void copy_b_loc_to_p_loc(std::vector<double> &p_loc_padded, std::vector<double> const& b_loc,
-    LocalUnitSquareGrid const& local_grid) {
+void copy_b_loc_to_p_loc(std::vector<double> &p_loc_padded, const std::vector<double> &b_loc,
+    const LocalUnitSquareGrid &local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
-    int index;
+    std::size_t index;
     #pragma omp parallel for private(index)
     for (std::size_t idx = 0; idx < local_grid.Nx; ++idx) {
         for (std::size_t idy = 0; idy < local_grid.Ny; ++idy) {
@@ -516,8 +515,8 @@ void copy_b_loc_to_p_loc(std::vector<double> &p_loc_padded, std::vector<double> 
  * @param local_grid Local UnitSquareGrid.
  * @return double 
  */
-double dot_padded(std::vector<double> const& not_padded, std::vector<double> const& padded,
-    LocalUnitSquareGrid const& local_grid) {
+double dot_padded(const std::vector<double> &not_padded, const std::vector<double> &padded,
+    const LocalUnitSquareGrid &local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
 
     double result = 0.0;
@@ -545,8 +544,8 @@ double dot_padded(std::vector<double> const& not_padded, std::vector<double> con
  * @param multiplier Multiplier.
  * @param local_grid Local UnitSquareGrid.
  */
-void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> const& in_padded,
-    double multiplier, LocalUnitSquareGrid const& local_grid) {
+void add_mult_finout_padded(std::vector<double>& inout, const std::vector<double> &in_padded,
+    double multiplier, const LocalUnitSquareGrid &local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
 
     std::size_t index;
@@ -569,8 +568,8 @@ void add_mult_finout_padded(std::vector<double>& inout, std::vector<double> cons
  * @param multiplier Multiplier.
  * @param local_grid Local UnitSquareGrid.
  */
-void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& inout_padded, double multiplier,
-    LocalUnitSquareGrid const& local_grid) {
+void add_mult_sinout_padded(const std::vector<double> &in, std::vector<double> &inout_padded, double multiplier,
+    const LocalUnitSquareGrid &local_grid) {
     std::size_t Nxt = local_grid.Nx + 2;
 
     std::size_t index;
@@ -591,8 +590,8 @@ void add_mult_sinout_padded(std::vector<double> const& in, std::vector<double>& 
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_inner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // row refers to the row of the matrix, not to the row in the local grid
     // the indices refer to the local grid, not the padded data
     std::size_t row, row_index_start, row_index_end;
@@ -603,6 +602,7 @@ void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, st
             row_index_start = A_loc.row_index(row);
             row_index_end = A_loc.row_index(row + 1);
 
+            out[row] = 0.0;
             for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
                 out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
             }
@@ -618,8 +618,8 @@ void matvec_inner(CRSMatrix const&A_loc, std::vector<double> const&in_padded, st
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_bottom_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // if there is no bottom neighbor the bottom part is part of the "inner" nodes
     if (!local_grid.has_bottom_neighbor) return;
 
@@ -631,6 +631,7 @@ void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
 
+        out[row] = 0.0;
         for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
             out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
         }
@@ -645,8 +646,8 @@ void matvec_bottom_boundary(CRSMatrix const&A_loc, std::vector<double> const& in
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_top_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
         // if there is no top neighbor the top part is part of the "inner" nodes
     if (!local_grid.has_top_neighbor) return;
 
@@ -660,6 +661,7 @@ void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_pa
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
 
+        out[row] = 0.0;
         for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
             out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
         }
@@ -674,8 +676,8 @@ void matvec_top_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_pa
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_left_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // if there is no left neighbor the left part is part of the "inner" nodes
     if (!local_grid.has_left_neighbor) return;
 
@@ -688,6 +690,7 @@ void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_p
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
 
+        out[row] = 0.0;
         for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
             out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
         }
@@ -702,8 +705,8 @@ void matvec_left_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_p
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_right_boundary(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // if there is no right neighbor the right part is part of the "inner" nodes
     if (!local_grid.has_right_neighbor) return;
 
@@ -716,6 +719,7 @@ void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_
         row_index_start = A_loc.row_index(row);
         row_index_end = A_loc.row_index(row + 1);
 
+        out[row] = 0.0;
         for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
             out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
         }
@@ -730,8 +734,8 @@ void matvec_right_boundary(CRSMatrix const&A_loc, std::vector<double> const& in_
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_topleft_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // if no left or top neighbor exist, the "corner" point has already been accounted for
     if (!local_grid.has_left_neighbor || !local_grid.has_top_neighbor) return;
 
@@ -739,6 +743,7 @@ void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_
     std::size_t row_index_start = A_loc.row_index(row);
     std::size_t row_index_end = A_loc.row_index(row + 1);
 
+    out[row] = 0.0;
     for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
         out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
     }
@@ -752,8 +757,8 @@ void matvec_topleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_topright_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // if no top or right neighbor exist, the "corner" point has already been accounted for
     if (!local_grid.has_top_neighbor || !local_grid.has_right_neighbor) return;
 
@@ -761,6 +766,7 @@ void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in
     std::size_t row_index_start = A_loc.row_index(row);
     std::size_t row_index_end = A_loc.row_index(row + 1);
 
+    out[row] = 0.0;
     for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
         out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
     }
@@ -774,8 +780,8 @@ void matvec_topright_corner(CRSMatrix const&A_loc, std::vector<double> const& in
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_bottomright_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     if (!local_grid.has_right_neighbor || !local_grid.has_bottom_neighbor) return;
     // if no right or bottom neighbor exist, the "corner" point has already been accounted for
 
@@ -783,6 +789,7 @@ void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const&
     std::size_t row_index_start = A_loc.row_index(row);
     std::size_t row_index_end = A_loc.row_index(row + 1);
 
+    out[row] = 0.0;
     for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
         out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
     }
@@ -797,8 +804,8 @@ void matvec_bottomright_corner(CRSMatrix const&A_loc, std::vector<double> const&
  * @param out Result.
  * @param local_grid Local UnitSquareGrid.
  */
-void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& in_padded, std::vector<double> &out,
-    LocalUnitSquareGrid const& local_grid) {
+void matvec_bottomleft_corner(const CRSMatrix &A_loc, const std::vector<double> &in_padded, std::vector<double> &out,
+    const LocalUnitSquareGrid &local_grid) {
     // if no bottom or left neighbor exist, the "corner" point has already been accounted for
     if (!local_grid.has_bottom_neighbor || !local_grid.has_left_neighbor) return;
 
@@ -806,6 +813,7 @@ void matvec_bottomleft_corner(CRSMatrix const&A_loc, std::vector<double> const& 
     std::size_t row_index_start = A_loc.row_index(row);
     std::size_t row_index_end = A_loc.row_index(row + 1);
 
+    out[row] = 0.0;
     for (std::size_t value_count = row_index_start; value_count < row_index_end; ++value_count) {
         out[row] += A_loc.value(value_count) * in_padded[A_loc.col_index(value_count)];
     }
